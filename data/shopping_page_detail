@@ -1,0 +1,5 @@
+http://www.amazon.cn/.*	//*[@id='productTitle']	//*[@id='priceblock_ourprice']	￥|,	//*[@id='productDescription']/div[@class='content']/div[@class='productDescriptionWrapper']	//*[@id='productDescription']/div[@class='content']/div[@class='productDescriptionWrapper']//img
+http://product.suning.com/.*	//*[@id='itemDisplayName']|//*[@id='productDisplayName']	//*[@id='promotionPrice']|//*[@id='mainprice']	¥	//*[@id='productDetail']	xxx
+http://product.dangdang.com/.*	//*[@id='main_bd']/div[2]/div[1]/div[2]/div/div[1]/h1	//span[@id='salePriceTag']		//*[@id='detail_all']/div[3]	xxx
+http://item.jd.com/.*	//*[@id='name']/h1	//*[@id='jd-price']	￥	//*[@id='J-detail-content']/div	xxx
+http://www.amazon.com/.*	
