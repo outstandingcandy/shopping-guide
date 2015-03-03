@@ -4,10 +4,8 @@
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
-sys.path.append('../beautifulsoup4-4.3.2')
-sys.path.append('../util')
-sys.path.append('../selenium-2.44.0/py')
-sys.path.append('../python-gflags-2.0')
+sys.path.append('selenium/py')
+sys.path.append('python-gflags')
 sys.path.append('.')
 
 import re
@@ -46,20 +44,18 @@ class SmzdmParser(object):
         self.price_pattern = re.compile(u'((?:\d+|\d+\.\d+))元(?:包邮)?.+')
         self.head_separator = '：'.decode('utf-8')
         self.attachment_pattern = re.compile(u'\(.+\)')
-        # self.list_page_driver = webdriver.Chrome()
-        # self.item_page_driver = webdriver.Chrome('chromedriver')
-        # self.list_page_driver = webdriver.Firefox()
-        # self.list_page_wait = ui.WebDriverWait(self.list_page_driver, 2)
-        # self.item_page_driver = webdriver.Firefox()
-        # self.item_page_wait = ui.WebDriverWait(self.item_page_driver, 10)
-        # self.middle_page_driver = webdriver.Firefox()
-        self.list_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
-        self.list_page_driver.set_page_load_timeout(10) # seconds
-        self.item_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
-        self.item_page_driver.set_page_load_timeout(10) # seconds
-        self.shopping_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
-        self.middle_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
-        self.middle_page_driver.set_page_load_timeout(10) # seconds
+        self.list_page_driver = webdriver.Chrome('chromedriver')
+        self.item_page_driver = webdriver.Chrome('chromedriver')
+        self.shopping_page_driver = webdriver.Chrome('chromedriver')
+        self.middle_page_driver = webdriver.Chrome('chromedriver')
+        # self.list_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
+        # self.item_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
+        # self.shopping_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
+        # self.middle_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
+#         self.list_page_driver.set_page_load_timeout(10) # seconds
+#         self.item_page_driver.set_page_load_timeout(10) # seconds
+#         self.shopping_page_driver.set_page_load_timeout(10) # seconds
+#         self.middle_page_driver.set_page_load_timeout(10) # seconds
         self.data = {}
         self.shopping_page_parser = shopping_page_parser.ShoppingPageParser(sys.argv[1])
 
@@ -76,10 +72,10 @@ class SmzdmParser(object):
         self.conn.commit()
 
     def __del__(self):
-        self.list_page_driver.quit()
-        self.item_page_driver.quit()
-        self.middle_page_driver.quit()
-        self.shopping_page_driver.quit()
+        self.list_page_driver.close()
+        self.item_page_driver.close()
+        self.middle_page_driver.close()
+        self.shopping_page_driver.close()
         self.conn.close()
 
     def parse_list_page(self, url):
@@ -104,33 +100,52 @@ class SmzdmParser(object):
             self.item_page_driver.get(url)
         except:
             pass
-        title = WebDriverWait(self.item_page_driver, \
-                10).until(EC.presence_of_element_located((By.XPATH, \
-                    '/html/body/section/div[1]/article/h1'))).text
+        try:
+            title = WebDriverWait(self.item_page_driver, \
+                    10).until(EC.presence_of_element_located((By.XPATH, \
+                        '/html/body/section/div[1]/article/h1'))).text
+        except:
+            sys.stderr.write('[ERROR] No title in this item page: %s\n' % (url))
+            return              
         (item_name, price) = self.parse_title(title)
-        item_description_list = WebDriverWait(self.item_page_driver, \
-                10).until(EC.presence_of_all_elements_located((By.XPATH, \
-                    '/html/body/section/div[1]/article/div[2]/p[@itemprop="description"]')))
-        item_description = ''
-        img_count = 0
-        for description in item_description_list:
-            try:
-                img_element = description.find_element_by_tag_name('img')
-                print img_element.get_attribute('src')
-                img_count += 1
-                urllib.urlretrieve(img_element.get_attribute('src'), "%s/%s/%d.jpg" % \
-                        (os.getcwd(), item_id, img_count))
-            except:
-                pass
-            item_description += description.text
-        print item_id, item_name, price, item_description
+        
+        try:
+            item_description_list = WebDriverWait(self.item_page_driver, \
+                    20).until(EC.presence_of_all_elements_located((By.XPATH, \
+                        '/html/body/section/div[1]/article/div[2]/p[@itemprop="description"]')))
+        except:
+            sys.stderr.write('[ERROR] Discription is not found in this item page: %s\n' % (url))
+            return
+        
         try:
             item_shopping_url = WebDriverWait(self.item_page_driver,
-                    10).until(EC.presence_of_element_located((By.XPATH, \
+                    20).until(EC.presence_of_element_located((By.XPATH, \
                         '/html/body/section/div[1]/article/div[2]/div/div/a'))).get_attribute('href')
         except:
             sys.stderr.write('[ERROR] No shopping url in this item page: %s\n' % (url))
             return
+        
+        img_src_list = []
+        for description in item_description_list:
+            try:
+                img_element = description.find_element_by_tag_name('img')
+                img_src_list.append(img_element.get_attribute('src'));
+            except:
+                pass
+            
+        item_description = ''    
+        for description in item_description_list:
+            try:
+                item_description += description.text
+            except:
+                sys.stderr.write('[ERROR] Discription text is not found in this item page: %s\n' % (url))
+        print item_id, item_name, price, item_description
+
+        
+        for img_count in range(len(img_src_list)):
+            urllib.urlretrieve(img_element.get_attribute('src'), "%s/%s/%d.jpg" % \
+                        (os.getcwd(), item_id, img_count))
+
         data = self.parse_shopping_page(item_shopping_url)
         if not data:
             sys.stderr.write('[ERROR] No shopping data in this shopping url: %s\n' % (item_shopping_url))
@@ -181,7 +196,6 @@ class SmzdmParser(object):
             return price
 
     def parse_shopping_page(self, url):
-        price = -1
         self.shopping_page_driver.get(url)
         try:
             WebDriverWait(self.shopping_page_driver, 10) \
@@ -222,8 +236,8 @@ class SmzdmParser(object):
             if price_match:
                 price = float(price_match.group(1))
                 continue
-            item_name += token
-        return (item_name, price)
+            item_name += token + ' '
+        return (item_name.strip(), price)
 
 
 if __name__ == '__main__':
@@ -237,6 +251,6 @@ if __name__ == '__main__':
         sys.stderr.write('%s\t%s\t%f\n' % (url, item_name, price))
         smzdm_parser.parse_item_page(url)
     '''
-    smzdm_parser = SmzdmParser('webpage', 'smzdm.txt')
+    smzdm_parser = SmzdmParser('webpage', sys.argv[2])
     for page_num in range(2, 13):
-        smzdm_parser.parse_list_page('http://www.smzdm.com/fenlei/yingertuiche/youhui/p%d' % page_num)
+        smzdm_parser.parse_list_page('http://www.smzdm.com/fenlei/yingertuiche/haitao/p%d' % page_num)

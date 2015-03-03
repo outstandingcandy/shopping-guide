@@ -3,10 +3,8 @@
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
-sys.path.append('../beautifulsoup4-4.3.2')
-sys.path.append('../util')
-sys.path.append('../selenium-2.44.0/py')
-sys.path.append('../python-gflags-2.0')
+sys.path.append('../../selenium/py')
+sys.path.append('../../python-gflags')
 sys.path.append('.')
 
 import re
@@ -18,6 +16,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchFrameException
 from urlparse import urlparse
 import urllib
+import time
 
 class element_located_by_xpath_to_be_selected(object):
     def __init__(self, xpath):
@@ -46,6 +45,7 @@ class ShoppingPageParser(object):
         self.url_pattern_list = []
         self.data = {}
         for line in open(url_pattern_xpath_mapping_file_name):
+            print line
             line = line.strip()
             tokens = line.split('\t')
             if len(tokens) != 6:
@@ -60,14 +60,15 @@ class ShoppingPageParser(object):
             self.__url_pattern_xpath_dict[url_pattern] = (title_xpath, \
                     price_xpath, price_redudant_pattern, description_xpath, description_img_xpath)
             self.url_pattern_list.append(url_pattern)
-        self.__driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
+        # self.__driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
+        self.__driver = webdriver.Chrome('chromedriver')
 
     def __del__(self):
-        self.__driver.quit()
+        self.__driver.close()
 
     def parse_shopping_page(self, url):
         title = ''
-        price = -1
+        price = -1.0
         description = ''
         img_src_list = []
         # url = urllib.quote(url.encode('utf-8'), ':/?|=#')
@@ -84,29 +85,40 @@ class ShoppingPageParser(object):
                           .until(EC.presence_of_element_located((By.XPATH, price_xpath)))
                     price = price_element.text.decode('utf-8')
                     price = price_redudant_pattern.sub('', price)
+                    print price
                     try:
                         price = float(price)
                     except:
+                        price = -1.0
                         sys.stderr.write('[ERROR] This item is sold out\n')
                 except:
                     sys.stderr.write('[ERROR] Price xpath is not found: %s\n' % url)
-
-                # self.__driver.switch_to.default_content();
-                # description_img_elements = WebDriverWait(self.__driver, 10) \
-                #      .until(EC.frame_to_be_available_and_switch_to_it((By.XPATH, '//iframe[@id="DA459i"]')))
+                if url_pattern.match('http://www.amazon.'):
+                    try:
+                        print 'switch frame in amazon'
+                        WebDriverWait(self.__driver, 10) \
+                            .until(EC.frame_to_be_available_and_switch_to_it((By.XPATH, '//iframe[@id="product-description-iframe"]')))
+                    except:
+                        sys.stderr.write('[ERROR] Frame in Amazon is not found: %s\n' % url)
                 try:
                     description_element = WebDriverWait(self.__driver, 10) \
                           .until(EC.presence_of_element_located((By.XPATH, description_xpath)))
                 except:
-                    sys.stderr.write('[ERROR] Description xpath is not found: %s\n' % url)
+                    sys.stderr.write('[ERROR] Description xpath %s is not found: %s\n' % (description_xpath, url))
                     break
-                self.__driver.execute_script("arguments[0].scrollIntoView(true);", description_element);
+                # self.__driver.execute_script("arguments[0].scrollIntoView(true);", description_element);
+                # self.__driver.execute_script("window.scrollTo(0, 10000);")
                 try:
                     description_img_elements = WebDriverWait(self.__driver, 10) \
                           .until(EC.presence_of_all_elements_located((By.XPATH, description_img_xpath)))
                 except:
                     sys.stderr.write('[ERROR] Description img xpath is not found: %s\n' % url)
                     break
+                for img_element in description_img_elements:
+                    self.__driver.execute_script("arguments[0].scrollIntoView(true);", img_element);
+                    time.sleep(1)
+                description_img_elements = WebDriverWait(self.__driver, 10) \
+                      .until(EC.presence_of_all_elements_located((By.XPATH, description_img_xpath)))
                 for img_element in description_img_elements:
                     img_src_list.append(img_element.get_attribute('src'))
                 for element in description_element.find_elements_by_xpath('*'):
