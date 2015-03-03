@@ -61,7 +61,7 @@ class ShoppingPageParser(object):
                     price_xpath, price_redudant_pattern, description_xpath, description_img_xpath)
             self.url_pattern_list.append(url_pattern)
         # self.__driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
-        self.__driver = webdriver.Chrome('chromedriver')
+        self.__driver = webdriver.Chrome('../../chromedriver')
 
     def __del__(self):
         self.__driver.close()

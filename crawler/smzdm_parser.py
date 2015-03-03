@@ -4,8 +4,8 @@
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
-sys.path.append('selenium/py')
-sys.path.append('python-gflags')
+sys.path.append('../../selenium/py')
+sys.path.append('../../python-gflags')
 sys.path.append('.')
 
 import re
@@ -44,10 +44,10 @@ class SmzdmParser(object):
         self.price_pattern = re.compile(u'((?:\d+|\d+\.\d+))元(?:包邮)?.+')
         self.head_separator = '：'.decode('utf-8')
         self.attachment_pattern = re.compile(u'\(.+\)')
-        self.list_page_driver = webdriver.Chrome('chromedriver')
-        self.item_page_driver = webdriver.Chrome('chromedriver')
-        self.shopping_page_driver = webdriver.Chrome('chromedriver')
-        self.middle_page_driver = webdriver.Chrome('chromedriver')
+        self.list_page_driver = webdriver.Chrome('../../chromedriver')
+        self.item_page_driver = webdriver.Chrome('../../chromedriver')
+        self.shopping_page_driver = webdriver.Chrome('../../chromedriver')
+        self.middle_page_driver = webdriver.Chrome('../../chromedriver')
         # self.list_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
         # self.item_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
         # self.shopping_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
