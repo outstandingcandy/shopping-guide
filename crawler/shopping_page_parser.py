@@ -11,12 +11,15 @@ import re
 import gflags
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchFrameException
 from urlparse import urlparse
 import urllib
 import time
+import ConfigParser
+import socket
 
 class element_located_by_xpath_to_be_selected(object):
     def __init__(self, xpath):
@@ -40,28 +43,28 @@ class frame_available(object):
 class ShoppingPageParser(object):
     """ Html Parser for shopping page
     """
-    def __init__(self, url_pattern_xpath_mapping_file_name):
+    def __init__(self, config_file_name):
         self.__url_pattern_xpath_dict = {}
         self.url_pattern_list = []
         self.data = {}
-        for line in open(url_pattern_xpath_mapping_file_name):
-            print line
-            line = line.strip()
-            tokens = line.split('\t')
-            if len(tokens) != 6:
-                sys.stderr.write('[ERROR] Shopping site data format error in line:\t%s\n' % line)
-                continue
-            url_pattern = re.compile(tokens[0])
-            title_xpath = tokens[1]
-            price_xpath = tokens[2]
-            price_redudant_pattern = re.compile(tokens[3].decode('utf-8'))
-            description_xpath = tokens[4]
-            description_img_xpath = tokens[5]
+        
+        config = ConfigParser.RawConfigParser()
+        config.read(config_file_name)
+        
+        for section_name in config.sections():
+            url_pattern = re.compile(config.get(section_name, "url_pattern"))
+            title_xpath = config.get(section_name, "title_xpath")
+            price_xpath = config.get(section_name, "price_xpath")
+            price_redudant_pattern = re.compile(config.get(section_name, "price_redudant_pattern"))
+            description_xpath = config.get(section_name, "description_xpath")
+            description_img_xpath = config.get(section_name, "description_img_xpath")
             self.__url_pattern_xpath_dict[url_pattern] = (title_xpath, \
                     price_xpath, price_redudant_pattern, description_xpath, description_img_xpath)
             self.url_pattern_list.append(url_pattern)
         # self.__driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
         self.__driver = webdriver.Chrome('../../chromedriver')
+        self.__driver.set_page_load_timeout(10) # seconds
+        self.__driver.set_script_timeout(10)
 
     def __del__(self):
         self.__driver.close()
@@ -72,7 +75,10 @@ class ShoppingPageParser(object):
         description = ''
         img_src_list = []
         # url = urllib.quote(url.encode('utf-8'), ':/?|=#')
-        self.__driver.get(url)
+        try:
+            self.__driver.get(url)
+        except:
+            pass
         for url_pattern, (title_xpath, price_xpath, price_redudant_pattern, description_xpath, description_img_xpath) in self.__url_pattern_xpath_dict.items():
             if url_pattern.match(url):
                 try:

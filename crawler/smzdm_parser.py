@@ -19,6 +19,7 @@ from urlparse import urlparse
 import urllib
 import sqlite3
 import md5
+import ConfigParser
 
 class url_is_from_shopping_site(object):
     def __init__(self, shopping_url_pattern_list):
@@ -39,36 +40,42 @@ class SmzdmParser(object):
     redundent_term = set([
       ]);
 
-    def __init__(self, webpage_database, txt_file_name):
+    def __init__(self, config_file_name):
         """Inits SmzdmParser"""
-        self.price_pattern = re.compile(u'((?:\d+|\d+\.\d+))元(?:包邮)?.+')
-        self.head_separator = '：'.decode('utf-8')
-        self.attachment_pattern = re.compile(u'\(.+\)')
-        self.list_page_driver = webdriver.Chrome('../../chromedriver')
-        self.item_page_driver = webdriver.Chrome('../../chromedriver')
-        self.shopping_page_driver = webdriver.Chrome('../../chromedriver')
-        self.middle_page_driver = webdriver.Chrome('../../chromedriver')
+        config = ConfigParser.RawConfigParser()
+        config.read(config_file_name)
+        
+        self.price_pattern = re.compile(config.get("item_page", "price_pattern"))
+        self.head_separator = config.get("item_page", "head_separator_pattern").decode("gbk")
+        self.attachment_pattern = re.compile(config.get("item_page", "attachment_pattern"))
+        
+        self.list_page_driver = webdriver.Chrome(config.get("webdriver", "path"))
+        self.item_page_driver = webdriver.Chrome(config.get("webdriver", "path"))
+        self.shopping_page_driver = webdriver.Chrome(config.get("webdriver", "path"))
+        self.middle_page_driver = webdriver.Chrome(config.get("webdriver", "path"))
         # self.list_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
         # self.item_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
         # self.shopping_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
         # self.middle_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
-#         self.list_page_driver.set_page_load_timeout(10) # seconds
-#         self.item_page_driver.set_page_load_timeout(10) # seconds
-#         self.shopping_page_driver.set_page_load_timeout(10) # seconds
-#         self.middle_page_driver.set_page_load_timeout(10) # seconds
+        self.list_page_driver.set_page_load_timeout(10) # seconds
+        self.item_page_driver.set_page_load_timeout(10) # seconds
+        self.shopping_page_driver.set_page_load_timeout(10) # seconds
+        self.middle_page_driver.set_page_load_timeout(10) # seconds
+
         self.data = {}
-        self.shopping_page_parser = shopping_page_parser.ShoppingPageParser(sys.argv[1])
+        self.shopping_page_parser = shopping_page_parser.ShoppingPageParser(config.get("shopping_page", "shopping_page_config_file_name"))
+        self.txt_file = open(config.get("debug", "txt_file_name"), "w")
+        
+        self.img_path = config.get("img", "path")
 
-        self.txt_file = open(txt_file_name, 'w')
-
-        self.webpage_database = webpage_database
-        self.conn = sqlite3.connect(self.webpage_database)
+        webpage_database_path = config.get("database", "path")
+        self.conn = sqlite3.connect(webpage_database_path)
+        self.webpage_database_name = webpage_database_path.split("/")[-1]
         self.c = self.conn.cursor()
         # Drop table
         # self.c.execute("DROP TABLE %s" % (self.webpage_database))
         # Create table
-        self.c.execute('''CREATE TABLE IF NOT EXISTS %s
-                               (url text unique, title text, description text, recommanded_price float, shopping_price float, shopping_url text)''' % (self.webpage_database))
+        self.c.execute('''CREATE TABLE IF NOT EXISTS %s (url text unique, title text, description text, recommanded_price float, shopping_price float, shopping_url text)''' % (self.webpage_database_name))
         self.conn.commit()
 
     def __del__(self):
@@ -90,12 +97,23 @@ class SmzdmParser(object):
             a_elem = div_elem.find_element_by_tag_name('h3').find_element_by_tag_name('a')
             url = a_elem.get_attribute('href')
             self.parse_item_page(url)
-
-    def parse_item_page(self, url):
+            
+    def download_imgs(self, url, img_src_list):
         print url
         item_id = md5.new(url).hexdigest()
-        if not os.path.exists(item_id):
-            os.mkdir(item_id)
+        img_path = "%s/%s" % (self.img_path, item_id)
+        if not os.path.exists(img_path):
+            os.mkdir(img_path)
+        for img_count in range(len(img_src_list)):
+            try:
+                urllib.urlretrieve(img_src_list[img_count], "%s/%d.jpg" % \
+                            (img_path, img_count))
+            except:
+                sys.stderr.write('[WARNING] Description image download failed in this item page: %s\n' % (url))
+                pass
+
+    def parse_item_page(self, url):
+
         try:
             self.item_page_driver.get(url)
         except:
@@ -114,7 +132,7 @@ class SmzdmParser(object):
                     20).until(EC.presence_of_all_elements_located((By.XPATH, \
                         '/html/body/section/div[1]/article/div[2]/p[@itemprop="description"]')))
         except:
-            sys.stderr.write('[ERROR] Discription is not found in this item page: %s\n' % (url))
+            sys.stderr.write('[ERROR] Description is not found in this item page: %s\n' % (url))
             return
         
         try:
@@ -133,35 +151,32 @@ class SmzdmParser(object):
             except:
                 pass
             
+        self.download_imgs(url, img_src_list)
+        
         item_description = ''    
         for description in item_description_list:
             try:
                 item_description += description.text
             except:
-                sys.stderr.write('[ERROR] Discription text is not found in this item page: %s\n' % (url))
-        print item_id, item_name, price, item_description
-
-        
-        for img_count in range(len(img_src_list)):
-            urllib.urlretrieve(img_element.get_attribute('src'), "%s/%s/%d.jpg" % \
-                        (os.getcwd(), item_id, img_count))
+                sys.stderr.write('[ERROR] Description text is not found in this item page: %s\n' % (url))
+        print item_name, price, item_description
+        self.c.execute("INSERT OR IGNORE INTO %s (url, title, description, recommanded_price, shopping_url )\
+                VALUES ('%s', '%s', '%s', %f, '%s')" %
+                (self.webpage_database_name, url, item_name.encode('utf-8'), \
+                    item_description.encode('utf-8'), price, item_shopping_url))
 
         data = self.parse_shopping_page(item_shopping_url)
         if not data:
             sys.stderr.write('[ERROR] No shopping data in this shopping url: %s\n' % (item_shopping_url))
             return
-        self.txt_file.write('%s\t%s\t%f\t%s\t%s\t%f\n' % (data['title'], item_id, data['price'], \
+        self.txt_file.write('%s\t%f\t%s\t%s\t%f\n' % (data['title'], data['price'], \
             data['description'], data['url'], data['price']))
-        item_id = md5.new(data['url']).hexdigest()
-        if not os.path.exists(item_id):
-            os.mkdir(item_id)
-        for img_index in range(len(data['img_src_list'])):
-            print data['img_src_list'][img_index]
-            urllib.urlretrieve(data['img_src_list'][img_index], "%s/%s/%d.jpg" % \
-                    (os.getcwd(), item_id, img_index))
+        
+        self.download_imgs(data['url'], data['img_src_list'])
+        
         self.c.execute("INSERT OR IGNORE INTO %s (url, title, description, recommanded_price, shopping_price, shopping_url )\
                 VALUES ('%s', '%s', '%s', %f, %f, '%s')" %
-                (self.webpage_database, data['url'], data['title'].encode('utf-8'), \
+                (self.webpage_database_name, data['url'], data['title'].encode('utf-8'), \
                     data['description'].encode('utf-8'), price, data['price'], data['url']))
         self.conn.commit()
 
@@ -196,7 +211,10 @@ class SmzdmParser(object):
             return price
 
     def parse_shopping_page(self, url):
-        self.shopping_page_driver.get(url)
+        try:
+            self.shopping_page_driver.get(url)
+        except:
+            pass
         try:
             WebDriverWait(self.shopping_page_driver, 10) \
                     .until(url_is_from_shopping_site(self.shopping_page_parser.url_pattern_list))
@@ -251,6 +269,6 @@ if __name__ == '__main__':
         sys.stderr.write('%s\t%s\t%f\n' % (url, item_name, price))
         smzdm_parser.parse_item_page(url)
     '''
-    smzdm_parser = SmzdmParser('webpage', sys.argv[2])
+    smzdm_parser = SmzdmParser("../configure/smzdm.ini")
     for page_num in range(2, 13):
         smzdm_parser.parse_list_page('http://www.smzdm.com/fenlei/yingertuiche/haitao/p%d' % page_num)
