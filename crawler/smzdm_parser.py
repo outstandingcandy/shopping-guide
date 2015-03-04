@@ -92,12 +92,16 @@ class SmzdmParser(object):
         except:
             pass
         sys.stderr.write('get url finished\n')
-        # self.list_page_wait.until(lambda list_page_driver : list_page_driver.find_elements_by_class_name("listTitle"))
-        for div_elem in self.list_page_driver.find_elements_by_class_name("listTitle"):
-            a_elem = div_elem.find_element_by_tag_name('h3').find_element_by_tag_name('a')
-            url = a_elem.get_attribute('href')
-            self.parse_item_page(url)
-            
+        a_elems = WebDriverWait(self.list_page_driver, 10). \
+                until(EC.presence_of_all_elements_located((By.XPATH, "/html/body/section//div[@class='listTitle']/h3[@class='itemName']/a")))
+        for a_elem in a_elems:
+            try:
+                item_url = a_elem.get_attribute('href')
+            except:
+                sys.stderr.write('[WARNING] Item url parse failed: %s\n' % (url))
+                pass
+            self.parse_item_page(item_url)
+
     def download_imgs(self, url, img_src_list):
         print url
         item_id = md5.new(url).hexdigest()
