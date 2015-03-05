@@ -1,7 +1,0 @@
-http://www.amazon.cn/.*	//*[@id='productTitle']	//*[@id='priceblock_ourprice']	￥|,	//*[@id='productDescription']	//*[@id='productDescription']/div[@class='content']/div[@class='productDescriptionWrapper']//img
-http://product.suning.com/.*	//*[@id='itemDisplayName']|//*[@id='productDisplayName']	//*[@id='promotionPrice']|//*[@id='mainprice']	¥	//*[@id='productDetail']	//*[@id='productDetail']//img
-http://product.dangdang.com/.*	//*[@id='main_bd']/div[2]/div[1]/div[2]/div/div[1]/h1	//span[@id='salePriceTag']		//*[@id='detail_all']/div[3]	//*[@id="detail_all"]//img
-http://item.jd.com/.*	//*[@id='name']/h1	//*[@id='jd-price']	￥	//*[@id='J-detail-content']/div	xxx
-http://www.amazon.*	//*[@id="productTitle"]	//*[@id='priceblock_ourprice']	￥|$	//*[@id='productDescription']//div[@class='content']//div[@class='productDescriptionWrapper']	//*[@id="productDescription"]//img | //*[@id='aplusProductDescription']//img
-http://www.neimanmarcus.com/.*	//*[@id="productDetails"]/div[1]/h1	//*[@id="lineItemsForm"]/div[2]/div[1]/div[1]/p[1]	CNY|,	xxx	xxx
-http://www.diapers.com/.*	//*[@id="wrap"]/div/div[2]/div[5]/div[1]/div[2]/div[1]/h1	//*[@id="priceDivClass"]/span[1]	$	xxx	xxx
