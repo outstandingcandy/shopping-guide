@@ -52,10 +52,10 @@ class ShoppingPageParser(object):
         config.read(config_file_name)
         
         for section_name in config.sections():
-            url_pattern = re.compile(config.get(section_name, "url_pattern"))
+            url_pattern = re.compile(config.get(section_name, "url_pattern").decode('utf8'))
             title_xpath = config.get(section_name, "title_xpath")
             price_xpath = config.get(section_name, "price_xpath")
-            price_redudant_pattern = re.compile(config.get(section_name, "price_redudant_pattern"))
+            price_redudant_pattern = re.compile(config.get(section_name, "price_redudant_pattern").decode('utf8'))
             description_xpath = config.get(section_name, "description_xpath")
             description_img_xpath = config.get(section_name, "description_img_xpath")
             self.__url_pattern_xpath_dict[url_pattern] = (title_xpath, \
@@ -89,9 +89,8 @@ class ShoppingPageParser(object):
                 try:
                     price_element = WebDriverWait(self.__driver, 10) \
                           .until(EC.presence_of_element_located((By.XPATH, price_xpath)))
-                    price = price_element.text.decode('utf-8')
+                    price = price_element.text
                     price = price_redudant_pattern.sub('', price)
-                    print price
                     try:
                         price = float(price)
                     except:
@@ -101,7 +100,6 @@ class ShoppingPageParser(object):
                     sys.stderr.write('[ERROR] Price xpath is not found: %s\n' % url)
                 if url_pattern.match('http://www.amazon.'):
                     try:
-                        print 'switch frame in amazon'
                         WebDriverWait(self.__driver, 10) \
                             .until(EC.frame_to_be_available_and_switch_to_it((By.XPATH, '//iframe[@id="product-description-iframe"]')))
                     except:
@@ -137,8 +135,9 @@ class ShoppingPageParser(object):
         self.data['img_src_list'] = img_src_list
 
 if __name__ == '__main__':
-    shopping_page_parser = ShoppingPageParser(sys.argv[1])
+    shopping_page_parser = ShoppingPageParser("../configure/shopping_page.ini")
     # shopping_page_parser.parse_shopping_page('http://www.amazon.cn/dp/B006FEPBF4?t=joyo01y-23&m=A1AJ19PSB66TGU&tag=joyo01y-23')
     url = 'http://www.amazon.cn/GRACO-%E7%BE%8E%E5%9B%BD%E8%91%9B%E8%8E%B1%E5%A9%B4%E5%84%BF%E6%8E%A8%E8%BD%A66N92CJB3J-%E9%BB%91%E8%89%B2/dp/B006FEPBF4'
     url = 'http://www.amazon.cn/GRACO-美国葛莱婴儿推车6N92CJB3J-黑色/dp/B006FEPBF4'
+    url = "http://www.amazon.com/gp/product/B00H8MQBBA/ref=s9_psimh_gw_p75_d0_i2?pf_rd_m=ATVPDKIKX0DER&pf_rd_s=desktop-1&pf_rd_r=13G2J8GFVSCW56GPTVHV&pf_rd_t=36701&pf_rd_p=1970559082&pf_rd_i=desktop"
     shopping_page_parser.parse_shopping_page(url)

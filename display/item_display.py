@@ -3,12 +3,11 @@
 
 from flask import Flask, render_template
 import sqlite3
+import md5
+
 app = Flask(__name__)
 
 # controllers
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'), 'ico/favicon.ico')
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -16,12 +15,14 @@ def page_not_found(e):
 
 @app.route("/")
 def index():
-    webpage_database = 'webpage'
-    items = []
-    conn = sqlite3.connect(webpage_database)
+    webpage_database_path = "../data/webpage"
+    conn = sqlite3.connect(webpage_database_path)
     c = conn.cursor()
+    webpage_database = webpage_database_path.split("/")[-1]
+    items = []
     for row in c.execute('SELECT * FROM %s ORDER BY recommanded_price DESC' % (webpage_database)):
-        item_id = row[0]
+        url = row[0]
+        item_id = md5.new(url).hexdigest()
         name = row[1]
         description = row[2]
         price = row[3]

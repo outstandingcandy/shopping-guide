@@ -4,33 +4,35 @@
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
-sys.path.append('../cluster-1.2.2/')
-sys.path.append('../jieba/')
+sys.path.append('../../jieba/')
 
 import sqlite3
 import jieba
 import jieba.analyse
-from cluster import KMeansClustering
 import Orange
 
 class ItemCluster(object):
     """ Item Cluster
     """
-    def __init__(self, webpage_database):
+    def __init__(self, webpage_database_path):
         self.item_list = []
-        conn = sqlite3.connect(webpage_database)
+        conn = sqlite3.connect(webpage_database_path)
         c = conn.cursor()
-
+        webpage_database = webpage_database_path.split("/")[-1]
         for row in c.execute('SELECT * FROM %s ORDER BY recommanded_price' % (webpage_database)):
+            url = row[0]
+            print url
             name = row[1]
+            print name.replace('\n', ' ')
             description = row[2]
             name_seg_list = jieba.cut(name)  # 默认是精确模式
             description_seg_list = jieba.cut(description)  # 默认是精确模式
             tags = jieba.analyse.extract_tags(description, topK=20, withWeight=True)
-            self.item_list.append((name, description))
+            if name:
+                self.item_list.append((name, description))
 
     def cut_setence(self, text):
-        return jieba.cut(text)
+        return list(jieba.cut(text))
 
     def extract_tags(self, text):
         return jieba.analyse.extract_tags(text, topK=20, withWeight=False)
@@ -47,13 +49,12 @@ class ItemCluster(object):
         item_info_list = []
         for (name, description) in self.item_list:
             name = name.replace('\n', ' ')
-            name_tag_list = self.extract_tags(name)
-            description_tag_list = self.extract_tags(description)
+            name_tag_list = self.cut_setence(name)
+            description_tag_list = self.cut_setence(description)
             item_info_list.append((name, name_tag_list, description_tag_list))
             self.statistic_term(name_tag_list, term_dict)
-            self.statistic_term(description_tag_list, term_dict)
+            # self.statistic_term(description_tag_list, term_dict)
         feature_num = len(term_dict)
-        print term_dict
         count = 0
         feature_names_line = ''
         feature_types_line = ''
@@ -75,8 +76,8 @@ class ItemCluster(object):
             item_feature_list = [0] * feature_num
             for item_name_tag in item_name_tag_list:
                 item_feature_list[term_dict[item_name_tag]] += 1
-            for item_description_tag in item_description_tag_list:
-                item_feature_list[term_dict[item_description_tag]] += 1
+            # for item_description_tag in item_description_tag_list:
+            #    item_feature_list[term_dict[item_description_tag]] += 1
             value_line = ''
             for item_feature in item_feature_list:
                 value_line += '%d\t' % item_feature
@@ -84,18 +85,22 @@ class ItemCluster(object):
             feature_file.write(value_line)
         feature_file.close()
 
-    def cluster_item(self):
-        cl = KMeansClustering(self.item_feature_list)
-        clusters = cl.getclusters(2)
-        print clusters
-        for cluster in clusters:
-            print cluster
-
 if __name__ == '__main__':
-    item_cluster = ItemCluster('webpage')
+    item_cluster = ItemCluster('../data/webpage')
     item_cluster.generate_features('item.tab')
     item = Orange.data.Table("item.tab")
-    km = Orange.clustering.kmeans.Clustering(item, 100)
-    for i in range(100):
-        print km.clusters[i], item[i].get_class()
+    #km = Orange.clustering.kmeans.Clustering(item, 10)
+    #for i in range(len(item)):
+    #    print km.clusters[i], item[i].get_class()
+    
+    import Orange
+
+    root = Orange.clustering.hierarchical.clustering(item, \
+                                                     distance_constructor=Orange.distance.Euclidean, \
+                                                     linkage=Orange.clustering.hierarchical.AVERAGE)
+    topmost = sorted(Orange.clustering.hierarchical.top_clusters(root, 50), key=len)
+    for n, cluster in enumerate(topmost):
+        print "\n\n Cluster %i \n" % n
+        for instance in cluster:
+            print item[instance].get_class()
 
