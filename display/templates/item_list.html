@@ -19,16 +19,16 @@
   </head>
   <body>
     <div class="container-fluid">
-      {% for item_name in recommend_items %}
+      {% for item_cluster in items %}
       <div class="col-md-12">
         <div>
           <h2 id="item_name">
-            {{ item_name }}
+            {{ item_cluster['item_name'] }}
           </h2>
           <h3>
             Recommended Information
           </h3>
-          {% for item in recommend_items[item_name] %}
+          {% for item in item_cluster['recommended'] %}
           <blockquote>
             <p>
               {{ item.description }}
@@ -55,7 +55,7 @@
           <h3>
             Shopping Information
           </h3>
-          {% for item in shopping_items[item_name] %}
+          {% for item in item_cluster['shopping'] %}
           <blockquote>
             <a id="title" href={{ item.url }}>
               {{ item.title }}

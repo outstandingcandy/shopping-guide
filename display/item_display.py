@@ -124,17 +124,17 @@ def list_item():
     cur = con.cursor()
     recommend_items = {}
     shopping_items = {}
-    cur.execute('SELECT * FROM %s ORDER BY smzdm_price DESC' % (item_database_name))
+    cur.execute('SELECT * FROM %s ORDER BY smzdm_score DESC' % (item_database_name))
+    items = []
     for result in cur.fetchall():
         item_name = result["item_name"]
-        recommend_items[item_name] = []
-        shopping_items[item_name] = []
+        item = {'recommended':[], 'shopping':[], 'item_name':item_name}
         for site_name in ['smzdm']:
             if result["%s_url" % site_name]:
                 url_md5 = md5.new(result["%s_url" % site_name]).hexdigest()
                 img_list = os.listdir('../../data/img/%s' % url_md5)
-                print url_md5, img_list
-                recommend_items[item_name].append({"site":site_name, \
+                print result["%s_score" % site_name]
+                item['recommended'].append({"site":site_name, \
                                                    "url":result["%s_url" % site_name], \
                                                    "url_md5" : url_md5, \
                                                    "img_list" : img_list, \
@@ -146,14 +146,15 @@ def list_item():
                 url_md5 = md5.new(result["%s_url" % site_name]).hexdigest()
                 img_list = os.listdir('../../data/img/%s' % url_md5)
                 print url_md5, img_list
-                shopping_items[item_name].append({"site":site_name, \
+                item['shopping'].append({"site":site_name, \
                                                   "url":result["%s_url" % site_name], \
                                                   "url_md5" : url_md5, \
                                                   "img_list" : img_list, \
                                                   "title":result["%s_title" % site_name], \
                                                   "price":result["%s_price" % site_name], \
                                                   "description":result["%s_description" % site_name]})
-    return render_template('item_list.html', recommend_items=recommend_items, shopping_items=shopping_items)
+        items.append(item)
+    return render_template('item_list.html', items=items)
 
 if __name__ == '__main__':
     app.run(debug=True,  host='0.0.0.0')
