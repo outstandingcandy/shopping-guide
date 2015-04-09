@@ -86,21 +86,23 @@ class ItemCluster(object):
         feature_file.close()
 
 if __name__ == '__main__':
-    item_cluster = ItemCluster('../data/webpage')
+    item_cluster = ItemCluster('../../data/webpage')
     item_cluster.generate_features('item.tab')
-    item = Orange.data.Table("item.tab")
+    items = Orange.data.Table("item.tab")
     #km = Orange.clustering.kmeans.Clustering(item, 10)
     #for i in range(len(item)):
     #    print km.clusters[i], item[i].get_class()
     
     import Orange
 
-    root = Orange.clustering.hierarchical.clustering(item, \
+    root = Orange.clustering.hierarchical.clustering(items, \
                                                      distance_constructor=Orange.distance.Euclidean, \
                                                      linkage=Orange.clustering.hierarchical.AVERAGE)
     topmost = sorted(Orange.clustering.hierarchical.top_clusters(root, 50), key=len)
     for n, cluster in enumerate(topmost):
         print "\n\n Cluster %i \n" % n
         for instance in cluster:
-            print item[instance].get_class()
+            print items[instance].get_class()
+    labels = [str(item.get_class()) for item in items]
+    Orange.clustering.hierarchical.dendrogram_draw("hclust-dendrogram.png", root, labels=labels) 
 

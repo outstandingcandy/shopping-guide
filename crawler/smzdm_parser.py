@@ -11,6 +11,7 @@ sys.path.append('.')
 import re
 import shopping_page_parser
 import os
+from selenium.common.exceptions import TimeoutException
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -57,10 +58,10 @@ class SmzdmParser(object):
         # self.item_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
         # self.shopping_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
         # self.middle_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
-        self.list_page_driver.set_page_load_timeout(20) # seconds
-        self.item_page_driver.set_page_load_timeout(20) # seconds
-        self.shopping_page_driver.set_page_load_timeout(20) # seconds
-        self.middle_page_driver.set_page_load_timeout(20) # seconds
+        self.list_page_driver.set_page_load_timeout(60) # seconds
+        self.item_page_driver.set_page_load_timeout(60) # seconds
+        self.shopping_page_driver.set_page_load_timeout(60) # seconds
+        self.middle_page_driver.set_page_load_timeout(60) # seconds
 
         self.data = {}
         self.shopping_page_parser = shopping_page_parser.ShoppingPageParser(config.get("shopping_page", "shopping_page_config_file_name"))
@@ -75,7 +76,7 @@ class SmzdmParser(object):
         # Drop table
         # self.c.execute("DROP TABLE %s" % (self.webpage_database))
         # Create table
-        self.c.execute('''CREATE TABLE IF NOT EXISTS %s (url text unique, title text, description text, recommanded_price float, shopping_price float, shopping_url text)''' % (self.webpage_database_name))
+        self.c.execute('''CREATE TABLE IF NOT EXISTS %s (url text unique, title text, description text, recommanded_price float, shopping_price float, shopping_url text, item_name text, score float)''' % (self.webpage_database_name))
         self.conn.commit()
 
     def __del__(self):
@@ -124,17 +125,16 @@ class SmzdmParser(object):
             self.item_page_driver.get(url)
         except:
             sys.stderr.write('[ERROR] Get smzdm item page failed: %s\n' % url)
-            return
         try:
             title = WebDriverWait(self.item_page_driver, \
-                    10).until(EC.presence_of_element_located((By.XPATH, \
+                    20).until(EC.presence_of_element_located((By.XPATH, \
                         '/html/body/section/div[1]/article/h1'))).text
         except:
             sys.stderr.write('[ERROR] No title in this item page: %s\n' % (url))
             return
         try:
             attachment = WebDriverWait(self.item_page_driver, \
-                    10).until(EC.presence_of_element_located((By.XPATH, \
+                    20).until(EC.presence_of_element_located((By.XPATH, \
                         '/html/body/section/div[1]/article/h1/span'))).text
         except:
             sys.stderr.write('[ERROR] No attachment in this item page: %s\n' % (url))
@@ -157,6 +157,18 @@ class SmzdmParser(object):
             sys.stderr.write('[ERROR] No shopping url in this item page: %s\n' % (url))
             return
         
+        try:
+            score = WebDriverWait(self.item_page_driver, \
+                    10).until(lambda x: x.find_element_by_xpath( \
+                        "//div[@class='score_rate']/span[3]")).text
+            print score
+        except TimeoutException:
+            sys.stderr.write('[ERROR] No worthy_num in this item page: %s\n' % (url))
+            log = open("../../data/error.log", "a")
+            log.write(self.item_page_driver.page_source);
+            log.close()
+            return
+        
         img_src_list = []
         for description in item_description_list:
             try:
@@ -172,9 +184,10 @@ class SmzdmParser(object):
                 item_description += description.text
             except:
                 sys.stderr.write('[ERROR] Description text is not found in this item page: %s\n' % (url))
-        self.c.execute("INSERT OR REPLACE INTO %s (url, title, description, recommanded_price, shopping_url )\
-                VALUES(?, ?, ?, ?, ?)" % self.webpage_database_name, (url, item_name, \
-                    item_description, price, item_shopping_url))
+        
+        self.c.execute("INSERT OR REPLACE INTO %s (url, title, description, recommanded_price, shopping_price, shopping_url, item_name, score) \
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)" % self.webpage_database_name, (url, item_name, \
+            item_description, price, 0, item_shopping_url, item_name, score))
         
         # Deal with shopping page information
         data = self.parse_shopping_page(item_shopping_url)
@@ -185,9 +198,9 @@ class SmzdmParser(object):
         self.txt_file.write('%s\t%f\t%s\t%s\t%f\n' % (data['title'], data['price'], \
             data['description'], data['url'], data['price']))
         self.download_imgs(data['url'], data['img_src_list'])
-        self.c.execute("INSERT OR REPLACE INTO %s (url, title, description, recommanded_price, shopping_price, shopping_url )\
-                VALUES(?, ?, ?, ?, ?, ?)" % self.webpage_database_name, (data['url'], data['title'], \
-                    data['description'], price, data['price'], data['url']))
+        self.c.execute("INSERT OR REPLACE INTO %s (url, title, description, recommanded_price, shopping_price, shopping_url, item_name, score)\
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?)" % self.webpage_database_name, (data['url'], data['title'], \
+                    data['description'], price, data['price'], data['url'], item_name, 0))
         self.conn.commit()
 
     def parse_shopping_page(self, url):
@@ -198,11 +211,10 @@ class SmzdmParser(object):
         try:
             WebDriverWait(self.shopping_page_driver, 10) \
                     .until(url_is_from_shopping_site(self.shopping_page_parser.url_pattern_list))
+            url = self.shopping_page_driver.current_url
         except:
-            sys.stderr.write('[ERROR] Is not shopping page: %s\n' % \
-                    self.shopping_page_driver.current_url)
+            sys.stderr.write('[ERROR] Is not shopping page: %s\n' % url)
             return
-        url = self.shopping_page_driver.current_url
         o = urlparse(url)
         if o.hostname == 're.jd.com':
             try:
@@ -228,6 +240,8 @@ class SmzdmParser(object):
                 price = float(price_match.group(1))
                 break
         return price
+    
+    
 
 if __name__ == '__main__':
     '''

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>SuperApp{% block title %}{% endblock %}</title>
+        <link href="/static/css/bootstrap.min.css" rel="stylesheet" media="screen">
+        <link href="/static/css/bootstrap-responsive.css" rel="stylesheet">
+        <script src="http://code.jquery.com/jquery-latest.js"></script>
+        <script src="/static/js/bootstrap.min.js"></script>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="">
+        <meta name="keywords" content="">
+        <meta name="author" content="">
+        <meta charset="utf-8">
+
+    </head>
+    <body>
+        <div class="container-fluid">
+            {% for item_id in items %}
+            <div class="row">
+                <div class="col-md-6">
+					<form>
+					  <div class="form-group">
+					    <label for="name">Name</label>
+					    <input type="text" class="form-control" id="name" value="{{ items[item_id].name }}" readonly>
+					  </div>
+					  <div class="form-group">
+					    <label for="name">Title</label>
+					    <input type="text" class="form-control" id="title" value="{{ items[item_id].name }}" readonly>
+					  </div>
+					  <div class="form-group">
+					    <label for="description">Description</label>
+					    <textarea type="text" rows="20" class="form-control" id="description" readonly="readonly">{{ items[item_id].description }}</textarea>
+					  </div>
+					  <div class="form-group">
+					    <label for="recommand_price">Recommand Price</label>
+					    <input type="text" class="form-control" id="recommand_price" value="{{ items[item_id].price }}" readonly="readonly">
+					  </div>
+					</form>
+						<div class="form-group">
+						    <label for="shopping_url">Shopping Url</label>
+						    <input type="text" class="form-control" id="real_price" value="{{ items[item_id].shopping_url }}" readonly="readonly">
+						</div>
+					  <div class="form-group">
+					    <label for="real_price">Real Price</label>
+					    <input type="text" class="form-control" id="real_price" value="{{ items[item_id].real_price }}" readonly>
+					  </div>
+					  <div class="col-md-4">
+                    	<img src="/static/img/{{ items[item_id].id }}/0.jpg" class="img-responsive"/>
+                      </div>
+                      <div class="col-md-4">
+                    	<img src="/static/img/{{ items[item_id].id }}/1.jpg" class="img-responsive"/>
+                      </div>
+                      <div class="col-md-4">
+                    	<img src="/static/img/{{ items[item_id].id }}/2.jpg" class="img-responsive"/>
+                      </div>
+					</form>
+                </div>
+                {% for item_id in new_items %}
+                <div class="col-md-6">
+					<form action="update_item_info" method="post">
+					  <div class="form-group">
+					    <label for="name">Name</label>
+					    <input type="text" class="form-control" id="name" value="{{ new_items[item_id].name }}">
+					  </div>
+					  <div class="form-group">
+					    <label for="description">Description</label>
+					    <textarea type="text" rows="20" class="form-control" id="description">{{ new_items[item_id].description }}</textarea>
+					  </div>
+					  <div class="form-group">
+					    <label for="recommand_price">Recommand Price</label>
+					    <input type="number" class="form-control" id="recommand_price" value="{{ new_items[item_id].price }}">
+					  </div>
+					  <div class="form-group">
+					    <label for="shopping_url">Shopping Url</label>
+					    <input type="url" class="form-control" id="real_price" value="{{ new_items[item_id].shopping_url }}">
+					  </div>
+					  <div class="form-group">
+					    <label for="real_price">Real Price</label>
+					    <input type="number" class="form-control" id="real_price" value="{{ new_items[item_id].real_price }}">
+					  </div>
+					  <div class="form-group">
+					    <label for="real_name">Real Name</label>
+					    <input type="text" class="form-control" id="real_name" name="real_name" value="{{ new_items[item_id].real_name }}">
+					  </div>
+					  <button class="btn btn-default" type="submit">Submit</button>
+					</form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </body>
+</html>
