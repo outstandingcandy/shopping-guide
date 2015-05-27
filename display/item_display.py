@@ -9,6 +9,7 @@ import os
 from flask.testsuite import catch_stderr
 
 import sys  
+from flask.helpers import url_for
 reload(sys)  
 sys.setdefaultencoding('utf8')  
 
@@ -20,6 +21,42 @@ def dict_factory(cursor, row):
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
+
+def reconstruct_item(result):
+    item_detail_url = url_for(".item_detail", item_id=result["item_id"])
+    item = {'recommended':[], 'shopping':[], 'item_name':result["item_name"], 'item_id':result["item_id"], 'detail_url':item_detail_url}
+    for site_name in ['smzdm']:
+        if result["%s_url" % site_name]:
+            url_md5 = md5.new(result["%s_url" % site_name]).hexdigest()
+            img_path_list = result["%s_image_path_list" % site_name].split("\t")
+            if img_path_list:
+                item['img'] = img_path_list[0]
+            item['recommended'].append({"site":site_name, \
+                                               "url":result["%s_url" % site_name], \
+                                               "url_md5" : url_md5, \
+                                               "img_list" : img_path_list, \
+                                               "title":result["%s_title" % site_name], \
+                                               "price":result["%s_price" % site_name], \
+                                               "description":result["%s_description" % site_name], \
+                                               "score":result["%s_score" % site_name]})
+            item['recommended_score'] = result["%s_score" % site_name]
+            item['lowest_price'] = result["%s_price" % site_name]
+            item['star'] = int(result["%s_score" % site_name] * 5)
+    for site_name in ['jd', 'amazon_cn', 'amazon_com', 'amazon_jp', 'suning']:
+        if result["%s_url" % site_name]:
+            url_md5 = md5.new(result["%s_url" % site_name]).hexdigest()
+            img_path_list = []
+            for img_path in result["%s_image_path_list" % site_name].split("\t"):
+                img_path_list.append(img_path)
+            item['shopping'].append({"site":site_name, \
+                                              "url":result["%s_url" % site_name], \
+                                              "url_md5" : url_md5, \
+                                              "img_list" : img_path_list, \
+                                              "title":result["%s_title" % site_name], \
+                                              "price":result["%s_price" % site_name], \
+                                              "description":result["%s_description" % site_name]})
+            item['current_price'] = result["%s_price" % site_name]
+    return item
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -122,39 +159,22 @@ def list_item():
     con.row_factory = dict_factory
     item_database_name = item_database_path.split("/")[-1]
     cur = con.cursor()
-    recommend_items = {}
-    shopping_items = {}
     cur.execute('SELECT * FROM %s ORDER BY smzdm_score DESC' % (item_database_name))
     items = []
     for result in cur.fetchall():
-        item_name = result["item_name"]
-        item = {'recommended':[], 'shopping':[], 'item_name':item_name}
-        for site_name in ['smzdm']:
-            if result["%s_url" % site_name]:
-                url_md5 = md5.new(result["%s_url" % site_name]).hexdigest()
-                img_list = os.listdir('../../data/img/%s' % url_md5)
-                print result["%s_score" % site_name]
-                item['recommended'].append({"site":site_name, \
-                                                   "url":result["%s_url" % site_name], \
-                                                   "url_md5" : url_md5, \
-                                                   "img_list" : img_list, \
-                                                   "title":result["%s_title" % site_name], \
-                                                   "price":result["%s_price" % site_name], \
-                                                   "description":result["%s_description" % site_name]})
-        for site_name in ['jd', 'amazon_cn', 'amazon_com', 'amazon_jp']:
-            if result["%s_url" % site_name]:
-                url_md5 = md5.new(result["%s_url" % site_name]).hexdigest()
-                img_list = os.listdir('../../data/img/%s' % url_md5)
-                print url_md5, img_list
-                item['shopping'].append({"site":site_name, \
-                                                  "url":result["%s_url" % site_name], \
-                                                  "url_md5" : url_md5, \
-                                                  "img_list" : img_list, \
-                                                  "title":result["%s_title" % site_name], \
-                                                  "price":result["%s_price" % site_name], \
-                                                  "description":result["%s_description" % site_name]})
-        items.append(item)
+        items.append(reconstruct_item(result))
     return render_template('item_list.html', items=items)
+
+@app.route("/item_detail/<item_id>", methods=['POST', 'GET'])
+def item_detail(item_id):
+    item_database_path = "../../data/item"
+    con = sqlite3.connect(item_database_path)
+    con.row_factory = dict_factory
+    item_database_name = item_database_path.split("/")[-1]
+    cur = con.cursor()
+    cur.execute('SELECT * FROM %s WHERE item_id="%s"' % (item_database_name, item_id))
+    result = cur.fetchone()
+    return render_template('item_detail.html', item=reconstruct_item(result))
 
 if __name__ == '__main__':
     app.run(debug=True,  host='0.0.0.0')

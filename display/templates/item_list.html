@@ -4,11 +4,15 @@
     <title>
       SuperApp{% block title %}{% endblock %}
     </title>
-    <link href="/static/css/bootstrap.min.css" rel="stylesheet" media="screen">
-    <link href="/static/css/bootstrap-responsive.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel= "stylesheet" type= "text/css">
+    <link href="{{ url_for('static', filename='css/metro.css') }}" rel= "stylesheet" type= "text/css">
+    <link href="{{ url_for('static', filename='css/metro-icons.css') }}" rel= "stylesheet" type= "text/css">
+
     <script src="http://code.jquery.com/jquery-latest.js">
     </script>
     <script src="/static/js/bootstrap.min.js">
+    </script>
+    <script src="/static/js/metro.js">
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
@@ -18,75 +22,32 @@
 
   </head>
   <body>
-    <div class="container-fluid">
+    <div class="list-group">
       {% for item_cluster in items %}
-      <div class="col-md-12">
-        <div>
-          <h2 id="item_name">
-            {{ item_cluster['item_name'] }}
-          </h2>
-          <h3>
-            Recommended Information
-          </h3>
-          {% for item in item_cluster['recommended'] %}
-          <blockquote>
-            <p>
-              {{ item.description }}
-            </p>
-            {% for img in item.img_list %}
-			  {% if loop.index % 3 == 1 %}
-			  <div class="col-md-12">
-			  {% endif %} 
-              <div class="col-md-4">
-                <img src="/static/img/{{ item.url_md5 }}/{{ img }}" class="img-responsive"/>
-              </div>
-              {% if loop.index % 3 == 0 or loop.last %}
-			  </div>
-			  {% endif %} 
-            {% endfor %}
-            <footer>
-              {{ item.title }}
-              <cite title={{ item.site }}>
-                {{ item.site }}
-              </cite>
-            </footer>
-          </blockquote>
-          {% endfor %}
-          <h3>
-            Shopping Information
-          </h3>
-          {% for item in item_cluster['shopping'] %}
-          <blockquote>
-            <a id="title" href={{ item.url }}>
-              {{ item.title }}
-            </a>
-            <p id="description">
-              {{ item.description }}
-            </p>
-            <p id="price">
-              {{ item.price }}
-            </p>
-            {% for img in item.img_list %}
-			  {% if loop.index % 3 == 1 %}
-			  <div class="col-md-12">
-			  {% endif %} 
-              <div class="col-md-4">
-                <img src="/static/img/{{ item.url_md5 }}/{{ img }}" class="img-responsive"/>
-              </div>
-              {% if loop.index % 3 == 0 or loop.last %}
-			  </div>
-			  {% endif %} 
-            {% endfor %}
-            <footer>
-              {{ item.title }}
-              <cite title={{ item.site }}>
-                {{ item.site }}
-              </cite>
-            </footer>
-          </blockquote>
-          {% endfor %}
+      <a class="list-group-item" href="{{item_cluster['detail_url']}}">
+        <div class="row">
+          <div class="col-md-1 thumbnail" >
+            <img class="media-object" src="/static/img/thumbs/big/{{ item_cluster['img'] }}.jpg" alt="" class="img-responsive">
+          </div>
+          <div class="col-md-11">
+            <h4>
+              {{ item_cluster['item_name'] }}
+            </h4>
+             {% for i in range(item_cluster['star']) %}
+             <span class="glyphicon glyphicon-star" aria-hidden="true"></span>
+             {% endfor %}
+             {% for i in range(5-item_cluster['star']) %}
+             <span class="glyphicon glyphicon-star-empty" aria-hidden="true"></span>
+             {% endfor %}
+             <br> 历史最低价 {{ item_cluster['lowest_price'] }}
+             {% if 'current_price' in item_cluster and item_cluster['current_price'] >= 0 %}
+             <br> 当前价格 {{ item_cluster['current_price'] }}
+             {% else %}
+             <br> 已售罄
+             {% endif %}
+          </div>
         </div>
-      </div>
+      </a>
       {% endfor %}
     </div>
   </body>
