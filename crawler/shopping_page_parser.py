@@ -40,6 +40,14 @@ class frame_available(object):
         else:
             return True
 
+class vlog(object):
+    def __init__(self, log_level):
+        self.log_level = log_level
+
+    def output(self, log_level, str):
+        if log_level >= self.log_level:
+            sys.stderr.write("%s\n" % (str))
+
 class ShoppingPageParser(object):
     """ Html Parser for shopping page
     """
@@ -47,6 +55,7 @@ class ShoppingPageParser(object):
         self.__url_pattern_xpath_dict = {}
         self.url_pattern_list = []
         self.data = {}
+        self.vlog = vlog(2)
         
         config = ConfigParser.RawConfigParser()
         config.read(config_file_name)
@@ -118,12 +127,37 @@ class ShoppingPageParser(object):
                 except:
                     sys.stderr.write('[ERROR] Description img xpath is not found: %s\n' % url)
                     break
-                for img_element in description_img_elements:
-                    self.__driver.execute_script("arguments[0].scrollIntoView(true);", img_element);
-                    time.sleep(1)
+                
+                """ Run func with the given timeout. If func didn't finish running
+                    within the timeout, raise TimeLimitExpired
+                """
+                import threading
+                class GetImgSrcThread(threading.Thread):
+                    def __init__(self, driver, elements):
+                        threading.Thread.__init__(self)
+                        self.__driver = driver
+                        self.__elements = elements
+            
+                    def run(self):
+                        for element in self.__elements:
+                            self.__driver.execute_script("arguments[0].scrollIntoView(true);", element)
+                            time.sleep(1)
+            
+                it = GetImgSrcThread(self.__driver, description_img_elements)
+                it.start()
+                it.join(30)
+                if it.isAlive():
+                    break
+
+#                 for img_element in description_img_elements:
+#                     self.__driver.execute_script("arguments[0].scrollIntoView(true);", img_element);
+#                     self.vlog.output(2, img_element.get_attribute('src'))
+#                     time.sleep(1)
+
                 description_img_elements = WebDriverWait(self.__driver, 10) \
                       .until(EC.presence_of_all_elements_located((By.XPATH, description_img_xpath)))
                 for img_element in description_img_elements:
+                    self.vlog.output(2, img_element.get_attribute('src'))
                     img_src_list.append(img_element.get_attribute('src'))
                 for element in description_element.find_elements_by_xpath('*'):
                     if element.text.strip():

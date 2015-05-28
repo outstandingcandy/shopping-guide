@@ -1,0 +1,11 @@
+eclipse.preferences.version=1
+encoding//crawler/amazon_cn_parser.py=utf-8
+encoding//crawler/shopping_page_parser.py=utf-8
+encoding//crawler/smzdm_crawler.py=utf-8
+encoding//crawler/smzdm_parser.py=utf-8
+encoding//display/item_display.py=utf-8
+encoding//item_cluster/item_cluster.py=utf-8
+encoding//item_cluster/item_label_cluster.py=utf-8
+encoding//scrapy/bbzdm/bbzdm/items.py=utf-8
+encoding//scrapy/bbzdm/bbzdm/pipelines.py=utf-8
+encoding//scrapy/bbzdm/bbzdm/settings.py=utf-8

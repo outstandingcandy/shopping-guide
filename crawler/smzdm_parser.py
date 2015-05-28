@@ -58,10 +58,10 @@ class SmzdmParser(object):
         # self.item_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
         # self.shopping_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
         # self.middle_page_driver = webdriver.PhantomJS(executable_path='../phantomjs/bin/phantomjs')
-        self.list_page_driver.set_page_load_timeout(60) # seconds
-        self.item_page_driver.set_page_load_timeout(60) # seconds
-        self.shopping_page_driver.set_page_load_timeout(60) # seconds
-        self.middle_page_driver.set_page_load_timeout(60) # seconds
+        self.list_page_driver.set_page_load_timeout(20) # seconds
+        self.item_page_driver.set_page_load_timeout(20) # seconds
+        self.shopping_page_driver.set_page_load_timeout(20) # seconds
+        self.middle_page_driver.set_page_load_timeout(20) # seconds
 
         self.data = {}
         self.shopping_page_parser = shopping_page_parser.ShoppingPageParser(config.get("shopping_page", "shopping_page_config_file_name"))
@@ -76,7 +76,9 @@ class SmzdmParser(object):
         # Drop table
         # self.c.execute("DROP TABLE %s" % (self.webpage_database))
         # Create table
-        self.c.execute('''CREATE TABLE IF NOT EXISTS %s (url text unique, title text, description text, recommanded_price float, shopping_price float, shopping_url text, item_name text, score float)''' % (self.webpage_database_name))
+        self.c.execute('''CREATE TABLE IF NOT EXISTS %s (url text unique, title text, description text, recommanded_price float, \
+                                                        score float, worthy_vote int, unworthy_vote int, favorite_count int, comment_count int, \
+                                                        shopping_price float, shopping_url text, item_name text)''' % (self.webpage_database_name))
         self.conn.commit()
 
     def __del__(self):
@@ -91,13 +93,13 @@ class SmzdmParser(object):
             self.list_page_driver.get(url)
         except:
             sys.stderr.write('[ERROR] Get smzdm list page failed: %s\n' % url)
-            pass
+            return
         try:
             a_elems = WebDriverWait(self.list_page_driver, 10). \
                     until(EC.presence_of_all_elements_located((By.XPATH, "/html/body/section//div[@class='listTitle']/h3[@class='itemName']/a")))
         except:
             sys.stderr.write('[ERROR] Item xpath is not found: %s\n' % url)
-            pass
+            return
         for a_elem in a_elems:
             try:
                 item_url = a_elem.get_attribute('href')
@@ -105,7 +107,9 @@ class SmzdmParser(object):
                 sys.stderr.write('[WARNING] Item url parse failed: %s\n' % (url))
                 pass
             sys.stdout.write('[INFO] Parse smzdm item page: %s\n' % item_url)
-            self.parse_item_page(item_url)
+            for i in range(3):
+                if self.parse_item_page(item_url):
+                    break
 
     def download_imgs(self, url, img_src_list):
         item_id = md5.new(url).hexdigest()
@@ -129,45 +133,59 @@ class SmzdmParser(object):
             title = WebDriverWait(self.item_page_driver, \
                     20).until(EC.presence_of_element_located((By.XPATH, \
                         '/html/body/section/div[1]/article/h1'))).text
+            print title
         except:
             sys.stderr.write('[ERROR] No title in this item page: %s\n' % (url))
-            return
+            return False
         try:
-            attachment = WebDriverWait(self.item_page_driver, \
-                    20).until(EC.presence_of_element_located((By.XPATH, \
-                        '/html/body/section/div[1]/article/h1/span'))).text
+            attachment_list = WebDriverWait(self.item_page_driver, \
+                    20).until(EC.presence_of_all_elements_located((By.XPATH, \
+                        '/html/body/section/div[1]/article/h1/span')))
         except:
             sys.stderr.write('[ERROR] No attachment in this item page: %s\n' % (url))
-            return
-        item_name = title.replace(attachment, '')
-        price = self.parse_price(attachment)
+            return False
+        item_name = title
+        all_attachment = ''
+        for attachment in attachment_list:
+            item_name = item_name.replace(attachment.text, '')
+            all_attachment += attachment.text
+        print all_attachment
+        price = self.parse_price(all_attachment)
+        print price
         sys.stdout.write('[INFO] smzdm [%s] [%s] [%s] [%s]\n' % (item_name, price, title, url))
         try:
             item_description_list = WebDriverWait(self.item_page_driver, \
                     20).until(EC.presence_of_all_elements_located((By.XPATH, \
                         '/html/body/section/div[1]/article/div[2]/p[@itemprop="description"]')))
+            print item_description_list
         except:
             sys.stderr.write('[ERROR] Description is not found in this item page: %s\n' % (url))
-            return
+            return False
         try:
             item_shopping_url = WebDriverWait(self.item_page_driver,
                     20).until(EC.presence_of_element_located((By.XPATH, \
                         '/html/body/section/div[1]/article/div[2]/div/div/a'))).get_attribute('href')
         except:
             sys.stderr.write('[ERROR] No shopping url in this item page: %s\n' % (url))
-            return
+            return False
         
         try:
-            score = WebDriverWait(self.item_page_driver, \
+            worthy_vote = WebDriverWait(self.item_page_driver, \
                     10).until(lambda x: x.find_element_by_xpath( \
-                        "//div[@class='score_rate']/span[3]")).text
-            print score
+                        "//span[@id='rating_worthy_num']")).text
+            unworthy_vote = WebDriverWait(self.item_page_driver, \
+                    10).until(lambda x: x.find_element_by_xpath( \
+                        "//span[@id='rating_unworthy_num']")).text
+            favorite_count = WebDriverWait(self.item_page_driver, \
+                    10).until(lambda x: x.find_element_by_xpath( \
+                        "//a[@class='fav']/em")).text
+            comment_count = WebDriverWait(self.item_page_driver, \
+                    10).until(lambda x: x.find_element_by_xpath( \
+                        "//a[@class='comment']/em")).text
+            print comment_count
         except TimeoutException:
-            sys.stderr.write('[ERROR] No worthy_num in this item page: %s\n' % (url))
-            log = open("../../data/error.log", "a")
-            log.write(self.item_page_driver.page_source);
-            log.close()
-            return
+            sys.stderr.write('[ERROR] No score in this item page: %s\n' % (url))
+            return False
         
         img_src_list = []
         for description in item_description_list:
@@ -185,15 +203,16 @@ class SmzdmParser(object):
             except:
                 sys.stderr.write('[ERROR] Description text is not found in this item page: %s\n' % (url))
         
-        self.c.execute("INSERT OR REPLACE INTO %s (url, title, description, recommanded_price, shopping_price, shopping_url, item_name, score) \
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?)" % self.webpage_database_name, (url, item_name, \
-            item_description, price, 0, item_shopping_url, item_name, score))
+        self.c.execute("INSERT OR REPLACE INTO %s (url, title, description, recommanded_price, shopping_price, shopping_url, \
+                                                    item_name, worthy_vote, unworthy_vote, favorite_count, comment_count) \
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" % self.webpage_database_name, (url, item_name, \
+            item_description, price, 0, item_shopping_url, item_name, worthy_vote, unworthy_vote, favorite_count, comment_count))
         
         # Deal with shopping page information
         data = self.parse_shopping_page(item_shopping_url)
         if not data:
             sys.stderr.write('[ERROR] No shopping data in this shopping url: %s\n' % (item_shopping_url))
-            return
+            return True
         sys.stdout.write('[INFO] shopping page [%s] [%s] [%s]\n' % (data['title'], data['price'], data['url']))
         self.txt_file.write('%s\t%f\t%s\t%s\t%f\n' % (data['title'], data['price'], \
             data['description'], data['url'], data['price']))
@@ -202,6 +221,7 @@ class SmzdmParser(object):
                 VALUES(?, ?, ?, ?, ?, ?, ?, ?)" % self.webpage_database_name, (data['url'], data['title'], \
                     data['description'], price, data['price'], data['url'], item_name, 0))
         self.conn.commit()
+        return True
 
     def parse_shopping_page(self, url):
         try:
@@ -255,7 +275,8 @@ if __name__ == '__main__':
         smzdm_parser.parse_item_page(url)
     '''
     smzdm_parser = SmzdmParser("../configure/smzdm.ini")
-    for page_num in range(1, 13):
+    for page_num in range(1, 11):
         list_page_url = 'http://www.smzdm.com/fenlei/yingertuiche/haitao/p%d' % page_num
+        list_page_url = 'http://www.smzdm.com/fenlei/yingertuiche/youhui/p%d' % page_num
         sys.stdout.write('[INFO] Parse smzdm list page: %s\n' % list_page_url)
         smzdm_parser.parse_list_page(list_page_url)
