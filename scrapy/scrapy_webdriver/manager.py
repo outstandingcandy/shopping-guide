@@ -52,8 +52,8 @@ class WebdriverManager(object):
             options[cap_attr] = self._desired_capabilities
             self._webdriver = self._browser(**options)
             self.crawler.signals.connect(self._cleanup, signal=engine_stopped)
-        # self._webdriver.set_page_load_timeout(30)
-        # self._webdriver.set_script_timeout(30)
+        self._webdriver.set_page_load_timeout(30)
+        self._webdriver.set_script_timeout(30)
         return self._webdriver
 
     def acquire(self, request):

@@ -24,7 +24,7 @@ def dict_factory(cursor, row):
 
 def reconstruct_item(result):
     item_detail_url = url_for(".item_detail", item_id=result["item_id"])
-    item = {'recommended':[], 'shopping':[], 'item_name':result["item_name"], 'item_id':result["item_id"], 'detail_url':item_detail_url}
+    item = {'recommended':[], 'shopping':[], 'item_name':result["item_name"], 'item_id':result["item_id"], 'detail_url':item_detail_url, 'star':0}
     for site_name in ['smzdm']:
         if result["%s_url" % site_name]:
             url_md5 = md5.new(result["%s_url" % site_name]).hexdigest()

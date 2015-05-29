@@ -102,11 +102,22 @@ class SmzdmSpider(CrawlSpider):
             img_src_sel_list = description_sel.select("img/@src")
             for img_src_sel in img_src_sel_list:
                 img_src_list.append(img_src_sel.extract())
-
-        worthy_vote = int(self.get_element_by_xpath(sel, "//span[@id='rating_worthy_num']/text()").extract().strip())
-        unworthy_vote = int(self.get_element_by_xpath(sel, "//span[@id='rating_unworthy_num']/text()").extract().strip())
-        favorite_count = int(self.get_element_by_xpath(sel, "//a[@class='fav']/em/text()").extract().strip())
-        comment_count = int(self.get_element_by_xpath(sel, "//a[@class='comment']/em/text()").extract().strip())
+        try:
+            worthy_vote = int(self.get_text_by_xpath(sel, "//span[@id='rating_worthy_num']/text()"))
+        except:
+            worthy_vote = 0
+        try:
+            unworthy_vote = int(self.get_text_by_xpath(sel, "//span[@id='rating_unworthy_num']/text()"))
+        except:
+            unworthy_vote = 0
+        try:
+            favorite_count = int(self.get_text_by_xpath(sel, "//a[@class='fav']/em/text()"))
+        except:
+            favorite_count = 0
+        try:
+            comment_count = int(self.get_text_by_xpath(sel, "//a[@class='comment']/em/text()"))
+        except:
+            comment_count = 0
         yield items.SmzdmItem(title=item_name, price=price, url=response.url, description=description, \
                               image_urls=img_src_list, worthy_vote=worthy_vote, unworthy_vote=unworthy_vote, \
                               favorite_count=favorite_count, comment_count=comment_count)
@@ -147,52 +158,52 @@ class SmzdmSpider(CrawlSpider):
                             log.msg("Shopping page error:\tThis item is sold out, the price is %s" % (price), level=log.WARNING, spider=SmzdmSpider)
                     else:
                         log.msg("Shopping page error:\tprice is not found", level=log.WARNING, spider=SmzdmSpider)
-                    if url_pattern.match('http://www.amazon.'):
-                        try:
-                            WebDriverWait(response.webdriver, 10) \
-                                .until(EC.frame_to_be_available_and_switch_to_it((By.XPATH, '//iframe[@id="product-description-iframe"]')))
-                        except:
-                            log.msg("Shopping page error:\tFrame in Amazon is not found", level=log.ERROR, spider=SmzdmSpider)
-                    
-                    description_sel_list = sel.select(description_xpath + "/*")
-                    for description_sel in description_sel_list:
-                        description_part = self.normalize_text(description_sel.extract())
-                        if description_part:
-                            description += description_part + '\t'
+                    # if url_pattern.match('http://www.amazon.'):
+                    #     try:
+                    #         WebDriverWait(response.webdriver, 10) \
+                    #             .until(EC.frame_to_be_available_and_switch_to_it((By.XPATH, '//iframe[@id="product-description-iframe"]')))
+                    #     except:
+                    #         log.msg("Shopping page error:\tFrame in Amazon is not found", level=log.ERROR, spider=SmzdmSpider)
+                    # 
+                    # description_sel_list = sel.select(description_xpath + "/*")
+                    # for description_sel in description_sel_list:
+                    #     description_part = self.normalize_text(description_sel.extract())
+                    #     if description_part:
+                    #         description += description_part + '\t'
 
-                    description_img_sel_list = sel.select(description_img_xpath)
-                    """ Run func with the given timeout. If func didn't finish running
-                        within the timeout, raise TimeLimitExpired
-                    """
-                    import threading
-                    class GetImgSrcThread(threading.Thread):
-                        def __init__(self, driver, sel_list):
-                            threading.Thread.__init__(self)
-                            self.__driver = driver
-                            self.__sel_list = sel_list
+                    # description_img_sel_list = sel.select(description_img_xpath)
+                    # """ Run func with the given timeout. If func didn't finish running
+                    #     within the timeout, raise TimeLimitExpired
+                    # """
+                    # import threading
+                    # class GetImgSrcThread(threading.Thread):
+                    #     def __init__(self, driver, sel_list):
+                    #         threading.Thread.__init__(self)
+                    #         self.__driver = driver
+                    #         self.__sel_list = sel_list
                 
-                        def run(self):
-                            for sel in self.__sel_list:
-                                try:
-                                    self.__driver.execute_script("arguments[0].scrollIntoView(true);", sel.element)
-                                    time.sleep(1)
-                                except:
-                                    log.msg("Shopping page error:\tscrollIntoView failed", level=log.ERROR, spider=SmzdmSpider)
-                                    img_src_sel_list = sel.select("./@src")
-                                    for img_src_sel in img_src_sel_list:
-                                        log.msg("Shopping page error:\timage %s is not found" % (img_src_sel.extract()), level=log.ERROR, spider=SmzdmSpider)
-                                    continue
-                    it = GetImgSrcThread(response.webdriver, description_img_sel_list)
-                    it.start()
-                    it.join(60)
-                    if it.isAlive():
-                        break
-                    description_img_sel_list = sel.select(description_img_xpath + "/@src")
-                    log.msg("Shopping description img list: %s[%d]" % (description_img_sel_list, len(description_img_sel_list)) , level=log.DEBUG, spider=SmzdmSpider)
-                    for description_img_sel in description_img_sel_list:
-                        img_src = description_img_sel.extract()
-                        if img_src:
-                            img_src_list.append(img_src)
+                    #     def run(self):
+                    #         for sel in self.__sel_list:
+                    #             try:
+                    #                 self.__driver.execute_script("arguments[0].scrollIntoView(true);", sel.element)
+                    #                 time.sleep(1)
+                    #             except:
+                    #                 log.msg("Shopping page error:\tscrollIntoView failed", level=log.ERROR, spider=SmzdmSpider)
+                    #                 img_src_sel_list = sel.select("./@src")
+                    #                 for img_src_sel in img_src_sel_list:
+                    #                     log.msg("Shopping page error:\timage %s is not found" % (img_src_sel.extract()), level=log.ERROR, spider=SmzdmSpider)
+                    #                 continue
+                    # it = GetImgSrcThread(response.webdriver, description_img_sel_list)
+                    # it.start()
+                    # it.join(60)
+                    # if it.isAlive():
+                    #     break
+                    # description_img_sel_list = sel.select(description_img_xpath + "/@src")
+                    # log.msg("Shopping description img list: %s[%d]" % (description_img_sel_list, len(description_img_sel_list)) , level=log.DEBUG, spider=SmzdmSpider)
+                    # for description_img_sel in description_img_sel_list:
+                    #     img_src = description_img_sel.extract()
+                    #     if img_src:
+                    #         img_src_list.append(img_src)
             log.msg("Shopping item: [%s] [%s] [%s] [%s] [%s]" % (title, description, price, url, referer) , level=log.DEBUG, spider=SmzdmSpider)
             yield items.ShoppingItem(title=title, price=price, url=url, referer=referer, image_urls=img_src_list, description=description)
         
@@ -214,4 +225,12 @@ class SmzdmSpider(CrawlSpider):
         if len(sel_list):
             return sel_list[0]
         else:
-            log.msg("Get element by xpath %s failed:\t[%s]" % (xpath) , level=log.ERROR, spider=SmzdmSpider)
+            log.msg("Get element by xpath %s failed" % (xpath) , level=log.ERROR, spider=SmzdmSpider)
+
+    def get_text_by_xpath(self, sel, xpath):
+        sel_list = sel.select(xpath)
+        if len(sel_list):
+            return sel_list[0].extract().strip()
+        else:
+            log.msg("Get element by xpath %s failed" % (xpath) , level=log.ERROR, spider=SmzdmSpider)
+            return ""

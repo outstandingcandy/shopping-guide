@@ -1,6 +1,7 @@
 from scrapy import log, version_info
 from scrapy.utils.decorator import inthread
 from scrapy.utils.misc import load_object
+from scrapy.exceptions import IgnoreRequest, NotSupported, NotConfigured
 
 import time
 
@@ -40,7 +41,10 @@ class WebdriverDownloadHandler(object):
     def _download_request(self, request, spider):
         """Download a request URL using webdriver."""
         log.msg('Downloading %s with webdriver' % request.url, level=log.DEBUG)
-        request.manager.webdriver.get(request.url)
+        try:
+            request.manager.webdriver.get(request.url)
+        except:
+            log.msg('Running webdriver timeout %s' % request.url, level=log.ERROR)
         time.sleep(5)
         return WebdriverResponse(request.url, request.manager.webdriver)
 

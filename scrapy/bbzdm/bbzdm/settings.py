@@ -37,6 +37,10 @@ SPIDER_MIDDLEWARES = {
     'scrapy_webdriver.middlewares.WebdriverSpiderMiddleware': 543,
 }
 
+DOWNLOADER_MIDDLEWARES = {
+    'scrapy_webdriver.downloader_middlewares.WebdriverDownloaderMiddleware': 400,
+}
+
 ITEM_PIPELINES = {
     'bbzdm.pipelines.SmzdmPipeline': 300,
     'scrapy.contrib.pipeline.images.ImagesPipeline': 301,
@@ -48,7 +52,8 @@ WEBDRIVER_BROWSER = 'Chrome'  # Or any other from selenium.webdriver
 # Optional passing of parameters to the webdriver
 WEBDRIVER_OPTIONS = {
     'service_args': ['--debug=true', '--load-images=false', '--webdriver-loglevel=debug'],
-    'executable_path': '../../../chromedriver.exe'
+    # 'executable_path': '../../../chromedriver.exe'
+    'executable_path': '../../../chromedriver'
 }
 
 

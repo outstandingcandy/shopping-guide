@@ -107,9 +107,13 @@ class ItemLabelCluster(object):
         # Get item information
         # self.webpage_database_c.execute('SELECT url, title, description, price, referer FROM %s' % (self.webpage_database_name))
         # for result in self.webpage_database_c.fetchall():
-        for line in open("../../shopping-guide/scrapy/tutorial/database/smzdm.json"):
+
+        # for line in open("../../shopping-guide/scrapy/tutorial/database/smzdm.json"):
+        self.webpage_database_c.execute('SELECT url, json FROM %s' % (self.webpage_database_name))
+        for result in self.webpage_database_c.fetchall():
+            print result
             try:
-                result = json.loads(line.strip())
+                result = json.loads(result["json"])
             except:
                 continue
             if "url" in result and "title" in result:
@@ -134,6 +138,8 @@ class ItemLabelCluster(object):
             item_info_dict[url]["referer"] = referer
             item_info_dict[url]["description"] = description
             item_info_dict[url]["score"] = score
+            if "images" not in item_info_dict[url]:
+                item_info_dict[url]["images"] = []
             
             # Get item name
             domain = urlparse(url).hostname
@@ -175,14 +181,14 @@ class ItemLabelCluster(object):
             for url in url_cluster:
                 item_info_dict[url]["item_name"] = selected_item_name
                 item_info_dict[url]["score"] = selected_score
-                print item_info_dict[url]["item_name"], item_info_dict[url]["url"], item_info_dict[url]["description"], item_info_dict[url]["images"]
+                print item_info_dict[url]["item_name"], item_info_dict[url]["url"], item_info_dict[url]["description"]
             print "xxxxxxxxxxxxxxxx"
         
         # import to database
         for item_info in item_info_dict.values():
             image_path_list = ""
-            for image in item_info["images"]:
-                image_path_list += image["path"].split("/")[-1].split(".")[0] + "\t"
+            for image_url in item_info["image_urls"]:
+                image_path_list += md5.new(image_url).hexdigest() + "\t"
             image_path_list = image_path_list.strip()
             item_info["image_path_list"] = image_path_list
             item_info["item_id"] = md5.new(item_info["item_name"]).hexdigest()
@@ -219,5 +225,4 @@ class ItemLabelCluster(object):
                                      % (self.item_database_name, site_name, url, site_name, title, site_name, description, site_name, price, site_name, score, site_name, image_path_list, item_name))
 
 if __name__ == '__main__':
-    item_cluster = ItemLabelCluster('../../shopping-guide/scrapy/tutorial/database/smzdm', '../../data/item')
-    
+    item_cluster = ItemLabelCluster('../../data/smzdm', '../../data/item')
