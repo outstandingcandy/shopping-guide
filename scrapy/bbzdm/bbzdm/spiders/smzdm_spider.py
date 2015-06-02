@@ -58,7 +58,9 @@ class SmzdmSpider(CrawlSpider):
                     price_xpath, price_redudant_pattern, description_xpath, description_img_xpath)
                     
         CrawlSpider.start_requests(self)
-        yield WebdriverRequest('http://www.smzdm.com/fenlei/yingertuiche/youhui/p1', callback=self.parse_smzdm_list_page)
+        # yield WebdriverRequest('http://www.smzdm.com/fenlei/yingertuiche/youhui/p1', callback=self.parse_smzdm_list_page)
+        # yield WebdriverRequest('http://www.smzdm.com/fenlei/anquanzuoyi/youhui/p1', callback=self.parse_smzdm_list_page)
+        yield WebdriverRequest('http://www.smzdm.com/fenlei/lego/youhui/p1', callback=self.parse_smzdm_list_page)
         # for i in range(20):
         #    yield WebdriverRequest('http://www.smzdm.com/p/625341', callback=self.parse_smzdm_item_page)
         
