@@ -50,7 +50,10 @@ class WebdriverXPathSelector(Selector):
                 xpath = xpath[:-len(name) - 2]
             elif parens and name == 'text':
                 xpath = xpath[:-len(name) - 3]
-        result = self._make_result(xpathev.find_elements_by_xpath(xpath))
+        try:
+            result = self._make_result(xpathev.find_elements_by_xpath(xpath))
+        except:
+            result = []
         if atsign:
             result = (_NodeAttribute(r.element, name) for r in result)
         elif parens and result and name == 'text':

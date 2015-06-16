@@ -92,7 +92,7 @@ if __name__ == '__main__':
     #km = Orange.clustering.kmeans.Clustering(item, 10)
     #for i in range(len(item)):
     #    print km.clusters[i], item[i].get_class()
-    
+
     import Orange
 
     root = Orange.clustering.hierarchical.clustering(items, \

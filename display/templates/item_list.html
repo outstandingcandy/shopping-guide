@@ -1,54 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title>
-      SuperApp{% block title %}{% endblock %}
-    </title>
-    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel= "stylesheet" type= "text/css">
-    <link href="{{ url_for('static', filename='css/metro.css') }}" rel= "stylesheet" type= "text/css">
-    <link href="{{ url_for('static', filename='css/metro-icons.css') }}" rel= "stylesheet" type= "text/css">
-
-    <script src="http://code.jquery.com/jquery-latest.js">
-    </script>
-    <script src="/static/js/bootstrap.min.js">
-    </script>
-    <script src="/static/js/metro.js">
-    </script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="">
-    <meta name="keywords" content="">
-    <meta name="author" content="">
-    <meta charset="utf-8">
-
-  </head>
-  <body>
-    <div class="list-group">
-      {% for item_cluster in items %}
-      <a class="list-group-item" href="{{item_cluster['detail_url']}}">
-        <div class="row">
-          <div class="col-md-1 thumbnail" >
-            <img class="media-object" src="/static/img/thumbs/big/{{ item_cluster['img'] }}.jpg" alt="" class="img-responsive">
-          </div>
-          <div class="col-md-11">
-            <h4>
-              {{ item_cluster['item_name'] }}
-            </h4>
-             {% for i in range(item_cluster['star']) %}
-             <span class="glyphicon glyphicon-star" aria-hidden="true"></span>
-             {% endfor %}
-             {% for i in range(5-item_cluster['star']) %}
-             <span class="glyphicon glyphicon-star-empty" aria-hidden="true"></span>
-             {% endfor %}
-             <br> 历史最低价 {{ item_cluster['lowest_price'] }}
-             {% if 'current_price' in item_cluster and item_cluster['current_price'] >= 0 %}
-             <br> 当前价格 {{ item_cluster['current_price'] }}
-             {% else %}
-             <br> 已售罄
-             {% endif %}
-          </div>
+    <head>
+        <title>
+            {% if category %}
+            BBZDM - {{ category }}
+            {% else %}
+            BBZDM
+            {% endif %}
+        </title>
+        <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel= "stylesheet" type= "text/css">
+        <script src="http://code.jquery.com/jquery-latest.js"></script>
+        <script src="/static/js/bootstrap.min.js"></script>
+        <script src="/static/js/jquery.infinitescroll.min.js"></script>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="">
+        <meta name="keywords" content="">
+        <meta name="author" content="">
+        <meta charset="utf-8">
+    </head>
+    <body style="min-height: 2000px; padding-top: 70px;">
+        <nav class="navbar navbar-default navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="/">
+                        <span class="glyphicon glyphicon-home"></span>
+                        <span class="hidden-xs">BBZDM</span>
+                    </a>
+                </div>
+                <div id="navbar" class="navbar-collapse collapse">
+                    <ul class="nav navbar-nav">
+                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Category<span class="caret"></span></a>
+                            <ul class="dropdown-menu" role="menu">
+                                <li class="dropdown-header">Children</li>
+                                <li role="presentation"><a role="menuitem" tabindex="-1" href="{{ url_for('list_item', category='stroller') }}">Stroller</a></li>
+                                <li role="presentation"><a role="menuitem" tabindex="-1" href="{{ url_for('list_item', category='car_seat') }}">Car seat</a></li>
+                                <li class="divider"></li>
+                                <li class="dropdown-header">Me</li>
+                                <li role="presentation"><a role="menuitem" tabindex="-1" href="{{ url_for('list_item', category='lego') }}">LEGO</a></li>
+                                <li role="presentation"><a role="menuitem" tabindex="-1" href="{{ url_for('list_item', category='running') }}">Running</a></li>
+                                <li role="presentation"><a role="menuitem" tabindex="-1" href="{{ url_for('list_item', category='backpack') }}">Backpack</a></li>
+                                <li role="presentation"><a role="menuitem" tabindex="-1" href="#">Other</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Filter<span class="caret"></span></a>
+                            <ul class="dropdown-menu" role="menu">
+                                <li class="dropdown-header">Shop</li>
+                                <li role="presentation"><a role="menuitem" tabindex="-1" href="{{ url_for('list_item', category='', shop='jd') }}">JD</a></li>
+                                <li role="presentation"><a role="menuitem" tabindex="-1" href="{{ url_for('list_item', category='', shop='amazon') }}">Amazon</a></li>
+                                <li role="presentation"><a role="menuitem" tabindex="-1" href="{{ url_for('list_item', category='', shop='suning') }}">Suning</a></li>
+                                <li role="presentation"><a role="menuitem" tabindex="-1" href="{{ url_for('list_item', category='', shop='other') }}">Other</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <ul class="nav navbar-nav navbar-right">
+                        <li><a href="#about">About</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        <div class="container">
+            <div class="row" id="item_row">
+                {% for item in items %}
+                <div class="col-xs-12 col-sm-3">
+                    <div class="thumbnail" id="item">
+                        <a href="{{ url_for('.item_detail', item_id=item['item_id']) }}" class="thumbnail">
+                            <img src="/static/img/square/{{ item['image_path'] }}.jpg" alt="" class="img-responsive">
+                        </a>
+                        <h4 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ item['item_name'] }}
+                        </h4>
+                        {% for i in range(item['star']) %}
+                        <span class="glyphicon glyphicon-star" aria-hidden="true"></span>
+                        {% endfor %}
+                        {% for i in range(5-item['star']) %}
+                        <span class="glyphicon glyphicon-star-empty" aria-hidden="true"></span>
+                        {% endfor %}
+                        <h6 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"> 历史最低价
+                            {% if item['recommended_currency'] == 'CNY' %}
+                            {{ item['recommended_price'] }}
+                            {% else %}
+                            {{ item['recommended_currency'] }} {{ item['recommended_price'] }} (CNY {{ item['recommended_rmb_price'] }})
+                            {% endif %}
+                        </h6>
+                        <h6 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {% if item['current_price'] < 0 %}
+                            已售罄
+                            {% elif item['current_currency'] == "CNY" %}
+                            当前价格 {{ item['current_price'] }}
+                            {% else %}
+                            当前价格 {{ item['current_currency'] }} {{ item['current_price'] }} (CNY {{ item['current_rmb_price'] }})
+                            {% endif %}
+                        </h6>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
-      </a>
-      {% endfor %}
-    </div>
-  </body>
+        <script>
+        $('#item').infinitescroll({
+            navSelector  : "#next",   // 页面分页元素(成功后会被隐藏)
+            nextSelector : "#next a", // 需要点击的下一页链接，和2的html要对应
+            itemSelector : ".item"  , // ajax回来之后，每一项的selecter
+                //（比如每篇文章都有item这个class）
+            animate      : true,      //加载完毕是否采用动态效果
+            extraScrollPx: 100,       //向下滚动的像素，必须开启动态效果
+                // debug     : true,      //调试的时候，可以打开
+            bufferPx     : 5,         //提示语展现的时长，数字越大，展现时间越短
+            loading: {
+                finishedMsg: '没有更多内容了', //当加载失败，或者加载不出内容之后的提示语
+                img:  'loading-new.gif',   //自定义loadding的动画图
+                msgText : '正在加载中...',    //加载时的提示语
+            },
+            function( newElements， opt ) {
+                //成功后执行自定义的函数
+                //如果需要对新内容进行加工，就在这里实现
+            }
+        };
+        </script>
+    </body>
 </html>

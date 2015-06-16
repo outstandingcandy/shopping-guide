@@ -22,7 +22,6 @@ class SmzdmPipeline(object):
         self.c.execute('''CREATE TABLE IF NOT EXISTS %s (url text unique, json text)''' % (self.webpage_database_name))
         self.conn.commit()
         self.json_file = open("../../../data/smzdm.json", "w")
-        
 
     def process_item(self, item, spider):
         log.msg(item.__class__.__name__)

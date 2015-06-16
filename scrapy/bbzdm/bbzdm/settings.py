@@ -18,15 +18,16 @@ COOKIES_ENABLED = True
 
 DOWNLOAD_TIMEOUT = 60
 RETRY_ENABLED = False
+# CONCURRENT_REQUESTS = 10
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'bbzdm (+http://www.yourdomain.com)'
 
 # DOWNLOAD_HANDLERS = {'http': 'bbzdm.handler.mydownloader.MyDownloadHandler'}
 IMAGES_STORE = '../../../image'
-IMAGES_THUMBS = {
-    'small': (50, 50),
-    'big': (270, 270),
-}
+# IMAGES_THUMBS = {
+#     'small': (50, 50),
+#     'big': (270, 270),
+# }
 
 DOWNLOAD_HANDLERS = {
     'http': 'scrapy_webdriver.download.WebdriverDownloadHandler',
@@ -37,9 +38,9 @@ SPIDER_MIDDLEWARES = {
     'scrapy_webdriver.middlewares.WebdriverSpiderMiddleware': 543,
 }
 
-DOWNLOADER_MIDDLEWARES = {
-    'scrapy_webdriver.downloader_middlewares.WebdriverDownloaderMiddleware': 400,
-}
+# DOWNLOADER_MIDDLEWARES = {
+#     'scrapy_webdriver.downloader_middlewares.WebdriverDownloaderMiddleware': 400,
+# }
 
 ITEM_PIPELINES = {
     'bbzdm.pipelines.SmzdmPipeline': 300,

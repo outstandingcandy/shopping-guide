@@ -1,79 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title>
-      SuperApp{% block title %}{% endblock %}
-    </title>
-    <link href="/static/css/bootstrap.min.css" rel="stylesheet" media="screen">
-    <link href="/static/css/bootstrap-responsive.css" rel="stylesheet">
-    <script src="http://code.jquery.com/jquery-latest.js">
-    </script>
-    <script src="/static/js/bootstrap.min.js">
-    </script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="">
-    <meta name="keywords" content="">
-    <meta name="author" content="">
-    <meta charset="utf-8">
+    <head>
+        <title>
+            BBZDM item detail
+        </title>
+        <link href="/static/css/bootstrap.min.css" rel="stylesheet" media="screen">
+        <script src="http://code.jquery.com/jquery-latest.js">
+        </script>
+        <script src="/static/js/bootstrap.min.js">
+        </script>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="">
+        <meta name="keywords" content="">
+        <meta name="author" content="">
+        <style type="text/css">
+                    .vertical-align {
+                        display: flex;
+                        flex-direction: row;
+                    }
 
-  </head>
-  <body>
-    <div class="container-fluid">
-      <h2>
-        {{ item['item_name'] }}
-        <span class="glyphicon glyphicon-star" aria-hidden="true">
-        </span>
-        {{ item['recommended_score'] }}
-        <span class="glyphicon glyphicon-usd" aria-hidden="true">
-        </span>
-        {{ item['lowest_price'] }}
-        <span class="glyphicon glyphicon-usd" aria-hidden="true">
-        </span>
-        {{ item['current_price'] }}
-      </h2>
-    </div>
-    <h3>
-      Recommended Information
-    </h3>
-    {% for item in item['recommended'] %}
-    <blockquote>
-      <p>
-        {{ item.description }}
-      </p>
-      <p>
-        推荐指数 {{ item.score }}
-      </p>
-      {% for img in item.img_list %} {% if loop.index % 3 == 1 %}
-      <div class="col-md-12">
-        {% endif %}
-        <div class="col-md-4">
-          <img src="/static/img/thumbs/big/{{ img }}.jpg" class="img-responsive"/>
-        </div>
-        {% if loop.index % 3 == 0 or loop.last %}
-      </div>
-      {% endif %} {% endfor %}
-      <footer>
-        <a href="{{item.url}}">
-          {{ item.title }}
-        </a>
-        <a href="{{item['detail_url']}}">
-          detail
-        </a>
-        <cite title={{ item.site }}>
-          {{ item.site }}
-        </cite>
-      </footer>
-    </blockquote>
-    {% endfor %}
-    <h3>
-      Shopping Information
-    </h3>
-    {% for item in item['shopping'] %}
-    <div class="panel-group" id="shoppint item" role="tablist" aria-multiselectable="true">
-      <div class="panel panel-default">
-        <div class="panel-heading" role="tab" id="head_{{ item['url_md5'] }}">
-          <h4 class="panel-title">
-            <a 
+                    .vertical-align > [class^="col-"],
+                    .vertical-align > [class*=" col-"] {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center; /* Optional, to align inner items 
+                                                    horizontally inside the column */
+                    }
+
+        </style>
+       <meta charset="utf-8">
+    </head>
+    <body>
+        <div class="container">
+            <div class="row">
+                <h2>
+                    {{ item['item_name'] }}
+                </h2>
+                <img src="/static/img/square/{{ item['image_path'] }}.jpg" alt="" class="img-responsive">
+            </div>
+            <div class="row">
+                推荐指数: {{ item['recommended_score'] }}
+            </div>
+            <div class="row">
+                历史最低价: CNY {{ item['recommended_price'] }}
+            </div>
+            <div class="row">
+                当前最低价: CNY {{ item['current_price'] }}
+            </div>
+            <div class="row">
+                <h3>
+                    推荐理由
+                </h3>
+            </div>
+            {% for item in item['recommended'] %}
+            <div class="row">
+                <h4>
+                    来自“什么值得买”的推荐
+                </h4>
+            </div>
+            <div class="row">
+                <blockquote>
+                    <p>
+                    {{ item.description }}
+                    </p>
+                    <footer>
+                        <a href="{{item.url}}">
+                            {{ item.title }}
+                        </a>
+                        <cite title={{ item.site }}>
+                            {{ item.site }}
+                        </cite>
+                    </footer>
+                </blockquote>
+            </div>
+            {% endfor %}
+            <!--
+                {% for img in item.img_list %} {% if loop.index % 3 == 1 %}
+                <div class="col-md-12">
+                {% endif %}
+                <div class="col-md-4">
+                <img src="/static/img/thumbs/big/{{ img }}.jpg" class="img-responsive"/>
+                </div>
+                {% if loop.index % 3 == 0 or loop.last %}
+                </div>
+                {% endif %} {% endfor %}
+                <footer>
+                <a href="{{item.url}}">
+                {{ item.title }}
+                </a>
+                <a href="{{item['detail_url']}}">
+                detail
+                </a>
+                <cite title={{ item.site }}>
+                {{ item.site }}
+                </cite>
+                </footer>
+                </blockquote>
+            -->
+            <div class="row">
+                <h3>
+                    购买渠道
+                </h3>
+                {% for item in item['shopping'] %}
+            </div>
+            <div class="row">
+                <div class="col-xs-1 col-sm-2">
+                    <img src=/static/img/logo/{{ item["site"] }}.jpg class="img-responsive">
+                </div>
+                <div class="col-xs-2 col-sm-3" style="padding:25px;">
+                    {% if item['price'] < 0 %}
+                    <p>已售罄</p>
+                    {% else %}
+                    <p>当前价格 {{ item['price'] }}</p>
+                    {% endif %}
+                </div>
+                <div class="col-xs-2 col-sm-3" style="padding:25px;">
+                    <a href = {{ item["url"] }}> 直达链接 </a>
+                </div>
+            </div>
+            {% endfor %}
+            <!--
+                <div class="panel-group" id="shoppint item" role="tablist" aria-multiselectable="true">
+                <div class="panel panel-default">
+                <div class="panel-heading" role="tab" id="head_{{ item['url_md5'] }}">
+                <h4 class="panel-title">
+                <a 
                 data-toggle="collapse"
                 data-parent="#accordion"
                 href="#collapse_{{ item['url_md5'] }}"
@@ -81,50 +132,50 @@
                 aria-controls="collapse_{{ item['url_md5'] }}">
 
 
-              {{ item.title }}
-            </a>
-          </h4>
-        </div>
-        <div 
-            id="collapse_{{ item['url_md5'] }}"
-            class="panel-collapse collapse"
-            role="tabpanel"
-            aria-labelledby="head_{{ item['url_md5'] }}">
+                {{ item.title }}
+                </a>
+                </h4>
+                </div>
+                <div 
+                id="collapse_{{ item['url_md5'] }}"
+                class="panel-collapse collapse"
+                role="tabpanel"
+                aria-labelledby="head_{{ item['url_md5'] }}">
 
 
 
-          <div class="panel-body">
-            <blockquote>
-              <a id="title" href={{ item.url }}>
+                <div class="panel-body">
+                <blockquote>
+                <a id="title" href={{ item.url }}>
                 购买链接
-              </a>
-              <p id="description">
+                </a>
+                <p id="description">
                 {{ item.description }}
-              </p>
-              <p id="price">
+                </p>
+                <p id="price">
                 {{ item.price }}
-              </p>
-              {% for img in item.img_list %} {% if loop.index % 3 == 1 %}
-              <div class="col-md-12">
+                </p>
+                {% for img in item.img_list %} {% if loop.index % 3 == 1 %}
+                <div class="col-md-12">
                 {% endif %}
                 <div class="col-md-4">
-                  <img src="/static/img/thumbs/big/{{ img }}.jpg" class="img-responsive"/>
+                <img src="/static/img/thumbs/big/{{ img }}.jpg" class="img-responsive"/>
                 </div>
                 {% if loop.index % 3 == 0 or loop.last %}
-              </div>
-              {% endif %} {% endfor %}
-              <footer>
+                </div>
+                {% endif %} {% endfor %}
+                <footer>
                 {{ item.title }}
                 <cite title={{ item.site }}>
-                  {{ item.site }}
+                {{ item.site }}
                 </cite>
-              </footer>
-            </blockquote>
-          </div>
+                </footer>
+                </blockquote>
+                </div>
+                </div>
+                </div>
+                </div>
+            -->
         </div>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</body>
+    </body>
 </html>

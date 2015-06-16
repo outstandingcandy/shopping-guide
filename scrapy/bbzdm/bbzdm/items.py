@@ -14,11 +14,14 @@ class SmzdmItem(scrapy.Item):
     referer = scrapy.Field()
     price = scrapy.Field()
     image_urls = scrapy.Field()
+    title_image_url = scrapy.Field()
     images = scrapy.Field()
     worthy_vote = scrapy.Field()
     unworthy_vote = scrapy.Field()
     favorite_count = scrapy.Field()
     comment_count = scrapy.Field()
+    category = scrapy.Field()
+    currency = scrapy.Field()
 
 class ShoppingItem(scrapy.Item):
     title = scrapy.Field()
@@ -27,4 +30,6 @@ class ShoppingItem(scrapy.Item):
     referer = scrapy.Field()
     price = scrapy.Field()
     image_urls = scrapy.Field()
+    title_image_url = scrapy.Field()
     images = scrapy.Field()
+    currency = scrapy.Field()
