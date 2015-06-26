@@ -89,6 +89,8 @@ class ItemLabelCluster(object):
         return normalized_item_description
 
     def get_rmb_price(self, item_info):
+        if "price" not in item_info:
+            return 0
         if item_info["price"] <= 0:
             return item_info["price"]
         if item_info["currency"] == "CNY":
@@ -99,7 +101,6 @@ class ItemLabelCluster(object):
             return item_info["price"] * 0.0498
         elif item_info["currency"] == "EUR":
             return item_info["price"] * 7.0020
-
 
     def normalize_url(self, url):
         url = url.lower()
@@ -129,7 +130,9 @@ class ItemLabelCluster(object):
         self.item_database_name = item_database_path.split("/")[-1]
         self.item_database_c.execute("DROP TABLE %s" % (self.item_database_name))
         self.item_database_c.execute('CREATE TABLE IF NOT EXISTS %s (item_id unique, item_name unique, score float, category text, \
-                                            current_price float, recommended_price float, current_rmb_price float, recommended_rmb_price float, current_currency text, recommended_currency text, image_path text, title_image text, \
+                                            current_price float, recommended_price float, current_rmb_price float, \
+                                            recommended_rmb_price float, current_currency text, recommended_currency text, \
+                                            image_path text, title_image text, recommended_data, shopping_data, posted_data, \
                                             jd_url text, jd_title text, jd_description text, jd_price float, jd_score float, jd_image_path_list text, \
                                             amazon_cn_url text, amazon_cn_title text, amazon_cn_description text, amazon_cn_price float, amazon_cn_score float, amazon_cn_image_path_list text, \
                                             amazon_com_url text, amazon_com_title text, amazon_com_description text, amazon_com_price float, amazon_com_score float, amazon_com_image_path_list text, \
@@ -165,6 +168,10 @@ class ItemLabelCluster(object):
                 referer = self.normalize_url(result["referer"])
             else:
                 referer = ""
+            outer_link_set = set()
+            if "outer_link_list" in result:
+                for outer_link in result["outer_link_list"]:
+                    outer_link_set.add(self.normalize_url(outer_link))
             if "description" in result:
                 description = self.normalize_item_description(result["description"])
             else:
@@ -189,9 +196,11 @@ class ItemLabelCluster(object):
                 item_info_dict[url]["images"] = []
 
             # Get item name
-            domain = urlparse(url).hostname
-            if domain == 'haitao.smzdm.com' or domain == 'www.smzdm.com':
+            host = urlparse(url).hostname
+            if host == 'haitao.smzdm.com' or host == 'www.smzdm.com':
                 item_name = self.normalize_item_name(title.decode("utf-8"))
+                if item_name.find('+') != -1:
+                    continue
                 item_info_dict[url]["item_name"] = item_name
                 if item_name in item_name_dict:
                     item_name_dict[item_name].append(url)
@@ -213,6 +222,14 @@ class ItemLabelCluster(object):
                 else:
                     url_graph[referer] = set([url])
 
+            for outer_link in outer_link_set:
+                if outer_link in url_graph:
+                    url_graph[outer_link].add(url)
+                else:
+                    url_graph[outer_link] = set([url])
+                if url not in url_graph:
+                    url_graph[url] = set()
+
         # Add edge in url graph
         for url_list in item_name_dict.values():
             for i in range(len(url_list)):
@@ -230,9 +247,10 @@ class ItemLabelCluster(object):
         link_graph = LinkGraph(url_graph)
         item_cluster_dict = {}
         for url_cluster in link_graph.get_connected_component().values():
-            selected_item_name = "x" * 999999
+            selected_item_name = "anonymous" * 999
             selected_category = "other"
             selected_title_image = ""
+            backup_title_image = ""
             selected_image_path = ""
             selected_score = 0
             selected_current_rmb_price = -1
@@ -243,9 +261,13 @@ class ItemLabelCluster(object):
             selected_recommended_currency = "CNY"
             selected_shopping_url = ""
             selected_recommended_url = ""
+            find_item_name = False
             for url in url_cluster:
+                if url not in item_info_dict:
+                    continue
                 if "item_name" in item_info_dict[url] and len(item_info_dict[url]["item_name"]) < len(selected_item_name):
                     selected_item_name = item_info_dict[url]["item_name"]
+                    find_item_name = True
                 host = urlparse(url).hostname
                 if host == 'haitao.smzdm.com' or host == 'www.smzdm.com':
                     if item_info_dict[url]["rmb_price"] > 0 and (selected_recommended_rmb_price < 0 or selected_recommended_rmb_price > item_info_dict[url]["rmb_price"]):
@@ -253,7 +275,7 @@ class ItemLabelCluster(object):
                         selected_recommended_price = item_info_dict[url]["price"]
                         selected_recommended_currency = item_info_dict[url]["currency"]
                         selected_recommended_url = url
-                    if item_info_dict[url]["image_urls"]:
+                    if item_info_dict[url]["image_urls"] and item_info_dict[url]["image_urls"][0]:
                         selected_image_path = hashlib.sha1(item_info_dict[url]["image_urls"][0]).hexdigest()
                     selected_category = item_info_dict[url]["category"]
                 else:
@@ -262,9 +284,17 @@ class ItemLabelCluster(object):
                         selected_current_price = item_info_dict[url]["price"]
                         selected_current_currency = item_info_dict[url]["currency"]
                         selected_shopping_url = url
-                        if item_info_dict[url]["title_image_url"]:
+                    if item_info_dict[url]["title_image_url"]:
+                        print "#image", url, item_info_dict[url]["title_image_url"]
+                        if host.startswith('www.amazon'):
                             selected_title_image = hashlib.sha1(item_info_dict[url]["title_image_url"]).hexdigest()
+                        else:
+                            backup_title_image = hashlib.sha1(item_info_dict[url]["title_image_url"]).hexdigest()
                 selected_score += item_info_dict[url]["score"]
+            if not find_item_name:
+                continue
+            if not selected_title_image:
+                selected_title_image = backup_title_image
             if max_score < selected_score:
                 max_score = selected_score
             item_cluster_dict[selected_item_name] = {}
@@ -283,17 +313,30 @@ class ItemLabelCluster(object):
             item_cluster_dict[selected_item_name]["recommended_url"] = selected_recommended_url
             item_cluster_dict[selected_item_name]["best_shopping_url"] = selected_shopping_url
             item_cluster_dict[selected_item_name]["webpage"] = {}
-            for url in url_cluster:
-                item_cluster_dict[selected_item_name]["webpage"][url] = item_info_dict[url]
-                print item_cluster_dict[selected_item_name]["item_name"].encode("utf-8"), url, \
-                        item_cluster_dict[selected_item_name]["score"], \
-                        max_score, item_cluster_dict[selected_item_name]["image_path"], item_cluster_dict[selected_item_name]["recommended_price"], \
-                        item_cluster_dict[selected_item_name]["recommended_rmb_price"], \
-                        item_cluster_dict[selected_item_name]["current_price"], item_cluster_dict[selected_item_name]["current_rmb_price"],item_cluster_dict[selected_item_name]["category"], \
-                        item_info_dict[url]["currency"]
-            print "xxxxxxxxxxxxxxxx"
+            item_cluster_dict[selected_item_name]["recommended_data"] = []
+            item_cluster_dict[selected_item_name]["shopping_data"] = []
+            item_cluster_dict[selected_item_name]["posted_data"] = []
 
-        print max_score
+            for url in url_cluster:
+                if url not in item_info_dict:
+                    continue
+                item_cluster_dict[selected_item_name]["webpage"][url] = item_info_dict[url]
+                host = urlparse(url).hostname
+                if host == 'haitao.smzdm.com' or host == 'www.smzdm.com':
+                    item_cluster_dict[selected_item_name]["recommended_data"].append(item_info_dict[url])
+                elif host == 'post.smzdm.com':
+                    item_cluster_dict[selected_item_name]["posted_data"].append(item_info_dict[url])
+                else:
+                    item_cluster_dict[selected_item_name]["shopping_data"].append(item_info_dict[url])
+                # print "#item_detail", item_cluster_dict[selected_item_name]["item_name"].encode("utf-8"), url, \
+                #         item_cluster_dict[selected_item_name]["score"], \
+                #         max_score, item_cluster_dict[selected_item_name]["title_image"], item_cluster_dict[selected_item_name]["recommended_price"], \
+                #         item_cluster_dict[selected_item_name]["recommended_rmb_price"], \
+                #         item_cluster_dict[selected_item_name]["current_price"], item_cluster_dict[selected_item_name]["current_rmb_price"],item_cluster_dict[selected_item_name]["category"], \
+                #         item_info_dict[url]["currency"]
+            sys.stderr.write("xxxxxxxxxxxxxxxx\t%s\t%s\t%s\n" % (item_cluster_dict[selected_item_name]["item_id"], \
+                    item_cluster_dict[selected_item_name]["item_name"], url_cluster))
+
         # import to database
         for item_cluster in item_cluster_dict.values():
             item_cluster["score"] = math.pow(item_cluster["score"] / max_score, 0.2)
@@ -303,7 +346,8 @@ class ItemLabelCluster(object):
             for item_info in item_cluster["webpage"].values():
                 image_path_list = ""
                 for image_url in item_info["image_urls"]:
-                    image_path_list += hashlib.sha1(image_url).hexdigest() + "\t"
+                    if image_url:
+                        image_path_list += hashlib.sha1(image_url).hexdigest() + "\t"
                 image_path_list = image_path_list.strip()
                 item_info["image_path_list"] = image_path_list
                 item_info["item_name"] = item_cluster["item_name"]
@@ -327,17 +371,16 @@ class ItemLabelCluster(object):
         self.item_database_conn.commit()
 
     def insert_cluster(self, item_cluster):
-        recommended_price = item_cluster["recommended_price"]
-        current_price = item_cluster["current_price"]
-        score = item_cluster["score"]
-        item_name = item_cluster["item_name"]
-        item_id = item_cluster["item_id"]
-        image_path = item_cluster["image_path"]
-        self.item_database_c.execute("INSERT OR IGNORE INTO %s (item_id, item_name, category, recommended_price, current_price, recommended_rmb_price, current_rmb_price, recommended_currency, current_currency, score, image_path, title_image) \
-                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"  % (self.item_database_name), (item_cluster["item_id"], item_cluster["item_name"], \
+        self.item_database_c.execute("INSERT OR IGNORE INTO %s (item_id, item_name, category, \
+                recommended_price, current_price, recommended_rmb_price, current_rmb_price, \
+                recommended_currency, current_currency, score, image_path, title_image, \
+                recommended_data, shopping_data, posted_data) \
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"  % (self.item_database_name), \
+                (item_cluster["item_id"], item_cluster["item_name"], \
                 item_cluster["category"], item_cluster["recommended_price"], item_cluster["current_price"], item_cluster["recommended_rmb_price"], \
                 item_cluster["current_rmb_price"], item_cluster["recommended_currency"], item_cluster["current_currency"], item_cluster["score"], \
-                item_cluster["image_path"], item_cluster["title_image"]))
+                item_cluster["image_path"], item_cluster["title_image"], \
+                json.dumps(item_cluster["recommended_data"]), json.dumps(item_cluster["shopping_data"]), json.dumps(item_cluster["posted_data"])))
 
     def insert_item(self, site_name, item_info):
         url = item_info["url"]

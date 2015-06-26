@@ -45,6 +45,10 @@ class WebdriverDownloadHandler(object):
             request.manager.webdriver.get(request.url)
         except:
             log.msg('Running webdriver timeout %s' % request.url, level=log.ERROR)
+            try:
+                request.manager.restart_webdriver.get(request.url)
+            except:
+                log.msg('Restart webdriver timeout %s' % request.url, level=log.ERROR)
         time.sleep(5)
         return WebdriverResponse(request.url, request.manager.webdriver)
 

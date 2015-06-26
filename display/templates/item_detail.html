@@ -42,17 +42,17 @@
                 推荐指数: {{ item['recommended_score'] }}
             </div>
             <div class="row">
-                历史最低价: CNY {{ item['recommended_price'] }}
+                历史最低价: CNY {{ item['recommended_rmb_price'] }}
             </div>
             <div class="row">
-                当前最低价: CNY {{ item['current_price'] }}
+                当前最低价: CNY {{ item['current_rmb_price'] }}
             </div>
             <div class="row">
                 <h3>
                     推荐理由
                 </h3>
             </div>
-            {% for item in item['recommended'] %}
+            {% for recommended_item in item['recommended'] %}
             <div class="row">
                 <h4>
                     来自“什么值得买”的推荐
@@ -61,19 +61,55 @@
             <div class="row">
                 <blockquote>
                     <p>
-                    {{ item.description }}
+                    {{ recommended_item.description }}
                     </p>
                     <footer>
-                        <a href="{{item.url}}">
-                            {{ item.title }}
+                        <a href="{{recommended_item['url']}}">
+                            {{ recommended_item.title }}
                         </a>
                         <cite title={{ item.site }}>
-                            {{ item.site }}
+                            {{ recommended_item.site }}
                         </cite>
                     </footer>
                 </blockquote>
+                    <div class="row">
+                        <h5>
+                            其他历史推荐
+                        </h5>
+                    </div>
+                    {% for webpage in recommended_item['webpage'] %}
+                        {% if webpage['url'] != recommended_item['url'] %}
+                        <div class="row">
+                            <a href={{ webpage['url'] }}>
+                                {{ webpage['title'] }} {{ webpage['currency'] }} {{ webpage['price'] }}
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
             </div>
             {% endfor %}
+            <div class="row">
+                <h3>
+                    晒单
+                </h3>
+            </div>
+            {% for posted_item in item['posted'] %}
+            <div class="row">
+                <h4>
+                    来自“什么值得买”的晒单
+                </h4>
+            </div>
+            <div class="row">
+                    {% for webpage in posted_item['webpage'] %}
+                        <div class="row">
+                            <a href={{ webpage['url'] }}>
+                                {{ webpage['title'] }}
+                            </a>
+                        </div>
+                    {% endfor %}
+            </div>
+            {% endfor %}
+
             <!--
                 {% for img in item.img_list %} {% if loop.index % 3 == 1 %}
                 <div class="col-md-12">
@@ -104,17 +140,17 @@
                 {% for item in item['shopping'] %}
             </div>
             <div class="row">
-                <div class="col-xs-1 col-sm-2">
+                <div class="col-xs-2 col-sm-2">
                     <img src=/static/img/logo/{{ item["site"] }}.jpg class="img-responsive">
                 </div>
-                <div class="col-xs-2 col-sm-3" style="padding:25px;">
+                <div class="col-xs-5 col-sm-3" style="padding:25px;">
                     {% if item['price'] < 0 %}
                     <p>已售罄</p>
                     {% else %}
                     <p>当前价格 {{ item['price'] }}</p>
                     {% endif %}
                 </div>
-                <div class="col-xs-2 col-sm-3" style="padding:25px;">
+                <div class="col-xs-5 col-sm-3" style="padding:25px;">
                     <a href = {{ item["url"] }}> 直达链接 </a>
                 </div>
             </div>

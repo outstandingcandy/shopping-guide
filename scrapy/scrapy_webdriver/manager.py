@@ -3,6 +3,7 @@ from collections import deque
 from threading import Lock
 
 from scrapy.signals import engine_stopped
+from scrapy import log, version_info
 from scrapy_webdriver.http import WebdriverRequest, WebdriverActionRequest
 from selenium import webdriver
 
@@ -55,6 +56,27 @@ class WebdriverManager(object):
             self._webdriver.set_page_load_timeout(60)
             self._webdriver.set_script_timeout(60)
         return self._webdriver
+
+    @property
+    def restart_webdriver(self):
+        """Return the webdriver instance, instantiate it if necessary."""
+        if self._webdriver is not None:
+            log.msg('Restart webdriver', level=log.ERROR)
+            self._webdriver.quit()
+            short_arg_classes = (webdriver.Firefox, webdriver.Ie)
+            if issubclass(self._browser, short_arg_classes):
+                cap_attr = 'capabilities'
+            else:
+                cap_attr = 'desired_capabilities'
+            options = self._options
+            options[cap_attr] = self._desired_capabilities
+            self._webdriver = self._browser(**options)
+            self.crawler.signals.connect(self._cleanup, signal=engine_stopped)
+            self._webdriver.set_page_load_timeout(60)
+            self._webdriver.set_script_timeout(60)
+            return self._webdriver
+        else:
+            return self.webdriver
 
     def acquire(self, request):
         """Acquire lock for the request, or enqueue request upon failure."""

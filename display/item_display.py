@@ -14,6 +14,9 @@ reload(sys)
 sys.setdefaultencoding('utf8')
 
 app = Flask(__name__)
+title_img_set = set()
+for file_name in os.listdir("static/img/square"):
+    title_img_set.add(file_name.split(".")[0])
 
 # controllers
 def dict_factory(cursor, row):
@@ -24,7 +27,7 @@ def dict_factory(cursor, row):
 
 def reconstruct_item(result):
     item_detail_url = url_for(".item_detail", item_id=result["item_id"])
-    item = {'recommended':[], 'shopping':[], 'item_name':result["item_name"], 'item_id':result["item_id"], 'detail_url':item_detail_url, 'star':0}
+    item = {'recommended':[], 'shopping':[], 'posted':[], 'item_name':result["item_name"], 'item_id':result["item_id"], 'detail_url':item_detail_url, 'star':0}
     item['recommended_price'] = result["recommended_price"]
     item['recommended_rmb_price'] = result["recommended_rmb_price"]
     item['recommended_currency'] = result["recommended_currency"]
@@ -34,14 +37,17 @@ def reconstruct_item(result):
     item['current_rmb_price'] = result["current_rmb_price"]
     item['current_currency'] = result["current_currency"]
     item['category'] = result["category"]
-    if result["title_image"]:
+    if result["title_image"] and result["title_image"] in title_img_set:
         item['image_path'] = result["title_image"]
-    else:
+    elif result["image_path"] in title_img_set:
         item['image_path'] = result["image_path"]
     return item
 
 def reconstruct_item_detail(result):
     item = reconstruct_item(result)
+    recommended_data = json.loads(result['recommended_data'])
+    shopping_data = json.loads(result['shopping_data'])
+    posted_data = json.loads(result['posted_data'])
     for site_name in ['smzdm']:
         if result["%s_url" % site_name]:
             url_md5 = md5.new(result["%s_url" % site_name]).hexdigest()
@@ -53,8 +59,8 @@ def reconstruct_item_detail(result):
                                                "title":result["%s_title" % site_name], \
                                                "price":result["%s_price" % site_name], \
                                                "description":result["%s_description" % site_name], \
-                                               "score":result["%s_score" % site_name]})
-    for site_name in ['jd', 'amazon_cn', 'amazon_com', 'amazon_de', 'amazon_jp', 'kidsroom_de', 'suning', 'kiddies24']:
+                                               "score":result["%s_score" % site_name], "webpage":recommended_data})
+    for site_name in ['jd', 'amazon_cn', 'amazon_com', 'amazon_de', 'amazon_jp', 'kidsroom_de', 'suning', 'kiddies24_de']:
         if "%s_url" % site_name in result and result["%s_url" % site_name]:
             url_md5 = md5.new(result["%s_url" % site_name]).hexdigest()
             img_path_list = []
@@ -66,31 +72,19 @@ def reconstruct_item_detail(result):
                                               "img_list" : img_path_list, \
                                               "title":result["%s_title" % site_name], \
                                               "price":result["%s_price" % site_name], \
-                                              "description":result["%s_description" % site_name]})
+                                              "description":result["%s_description" % site_name], "webpage":shopping_data})
+    item['posted'].append({"webpage":posted_data})
     return item
 
 @app.route("/")
 def index():
+    page = int(request.args.get('page', 1))
     item_database_path = "../data/item"
     con = sqlite3.connect(item_database_path)
     con.row_factory = dict_factory
     item_database_name = item_database_path.split("/")[-1]
     cur = con.cursor()
-    cur.execute('SELECT * FROM %s WHERE recommended_price>0 AND current_price>0 AND current_rmb_price / recommended_rmb_price < 1.1 ORDER BY score DESC LIMIT 0,22' % (item_database_name))
-    items = []
-    for result in cur.fetchall():
-        items.append(reconstruct_item(result))
-    return render_template('item_list.html', items=items, category='')
-
-@app.route("/page/<page>", methods=['POST', 'GET'])
-def page(page):
-    page = int(page)
-    item_database_path = "../data/item"
-    con = sqlite3.connect(item_database_path)
-    con.row_factory = dict_factory
-    item_database_name = item_database_path.split("/")[-1]
-    cur = con.cursor()
-    cur.execute('SELECT * FROM %s WHERE recommended_price>0 AND current_price>0 AND current_rmb_price / recommended_rmb_price < 1.1 ORDER BY score DESC LIMIT %d,%d' % (item_database_name, (page-1)*12, page*12))
+    cur.execute('SELECT * FROM %s WHERE recommended_price>0 AND current_price>0 AND current_rmb_price / recommended_rmb_price < 1.1 ORDER BY score DESC LIMIT %d,%d' % (item_database_name, (page-1)*12, 12))
     items = []
     for result in cur.fetchall():
         items.append(reconstruct_item(result))
@@ -98,19 +92,21 @@ def page(page):
 
 @app.route("/<category>", methods=['POST', 'GET'])
 def list_item(category):
+    page = int(request.args.get('page', 1))
     item_database_path = "../data/item"
     con = sqlite3.connect(item_database_path)
     con.row_factory = dict_factory
     item_database_name = item_database_path.split("/")[-1]
     cur = con.cursor()
-    if category:
-        cur.execute('SELECT * FROM %s WHERE category="%s" AND recommended_price>0 AND current_price>0 ORDER BY score DESC LIMIT 0,22' % (item_database_name, category))
-    else:
-        cur.execute('SELECT item_name, item_id, score, category, recommended_currency, recommended_price, recommended_rmb_price, current_price, current_currency, current_rmb_price, image_path, title_image WHERE category="%s" AND recommended_price>0 AND current_price>0 FROM %s ORDER BY score DESC LIMIT 0,22' % (item_database_name))
+    cur.execute('SELECT * FROM %s WHERE category="%s" AND recommended_price>0 AND current_price>0 ORDER BY score DESC LIMIT %d,%d' % (item_database_name, category, (page-1)*12, 12))
     items = []
     for result in cur.fetchall():
         items.append(reconstruct_item(result))
     return render_template('item_list.html', items=items, category=category)
+
+@app.route("/test", methods=['POST', 'GET'])
+def test():
+    return render_template('test.html')
 
 @app.route("/search")
 def search():
@@ -195,5 +191,5 @@ def item_detail(item_id):
     return render_template('item_detail.html', item=reconstruct_item_detail(result))
 
 if __name__ == '__main__':
-    app.run(debug=True,  host='0.0.0.0', port=80)
+    app.run(debug=False,  host='0.0.0.0', port=80)
 

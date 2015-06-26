@@ -33,3 +33,12 @@ class ShoppingItem(scrapy.Item):
     title_image_url = scrapy.Field()
     images = scrapy.Field()
     currency = scrapy.Field()
+
+class SmzdmPostItem(scrapy.Item):
+    title = scrapy.Field()
+    url = scrapy.Field()
+    description = scrapy.Field()
+    referer = scrapy.Field()
+    outer_link_list = scrapy.Field()
+    image_urls = scrapy.Field()
+    images = scrapy.Field()

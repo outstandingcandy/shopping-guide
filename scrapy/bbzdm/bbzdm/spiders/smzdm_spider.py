@@ -9,6 +9,8 @@ sys.path.append('bbzdm')
 import re
 import json
 import time
+import requests
+import traceback
 import sqlite3
 import ConfigParser
 
@@ -68,19 +70,17 @@ class SmzdmSpider(CrawlSpider):
             title_img_xpath_list = shopping_config.get(section_name, "title_img_xpath").split(",")
             self.__url_pattern_xpath_dict[url_pattern] = (title_xpath, \
                     price_xpath, price_redudant_pattern, description_xpath, description_img_xpath, currency, title_img_xpath_list)
-        CrawlSpider.start_requests(self)
-        yield WebdriverRequest('http://www.smzdm.com/fenlei/yingertuiche/youhui/p1', meta={'category': 'stroller'}, callback=self.parse_smzdm_list_page)
-        # yield WebdriverRequest('http://www.smzdm.com/fenlei/anquanzuoyi/youhui/p1', meta={'category': 'car_seat'}, callback=self.parse_smzdm_list_page)
-        # yield WebdriverRequest('http://www.smzdm.com/fenlei/lego/youhui/p1', meta={'category': 'lego'}, callback=self.parse_smzdm_list_page)
-        # yield WebdriverRequest('http://www.smzdm.com/fenlei/huwaibeibao/youhui/p1', meta={'category': 'backpack'}, callback=self.parse_smzdm_list_page)
-        yield WebdriverRequest('http://www.smzdm.com/fenlei/yingertuiche/haitao/p1', meta={'category': 'stroller'}, callback=self.parse_smzdm_list_page)
-        # yield WebdriverRequest('http://www.smzdm.com/fenlei/anquanzuoyi/haitao/p1', meta={'category': 'car_seat'}, callback=self.parse_smzdm_list_page)
-        # yield WebdriverRequest('http://www.smzdm.com/fenlei/lego/haitao/p1', meta={'category': 'lego'}, callback=self.parse_smzdm_list_page)
-        # yield WebdriverRequest('http://www.smzdm.com/fenlei/huwaibeibao/haitao/p1', meta={'category': 'backpack'}, callback=self.parse_smzdm_list_page)
-        # yield WebdriverRequest('http://www.smzdm.com/fenlei/huwaibeibao/haitao/p1', meta={'category': 'backpack'}, callback=self.parse_smzdm_list_page)
 
-        # yield WebdriverRequest('http://haitao.smzdm.com/p/301673', meta={'category': 'stroller'}, callback=self.parse_smzdm_item_page)
-        # yield WebdriverRequest('http://www.smzdm.com/p/332799', meta={'category': 'backpack'}, callback=self.parse_smzdm_item_page)
+        CrawlSpider.start_requests(self)
+        for (category, urls) in smzdm_config.items("category"):
+            if category == "all_post":
+                for url in urls.split(","):
+                    yield WebdriverRequest(url, meta={'category': category}, callback=self.parse_smzdm_post_list_page)
+        #     else:
+        #         for url in urls.split(","):
+        #             yield WebdriverRequest(url, meta={'category': category}, callback=self.parse_smzdm_list_page)
+
+        # yield WebdriverRequest('http://post.smzdm.com/p/306042/', meta={'category': 'all_post'}, callback=self.parse_smzdm_post_page)
         # yield WebdriverRequest('http://www.smzdm.com/p/509953', meta={'category': 'backpack'}, callback=self.parse_smzdm_item_page)
 
     def parse_smzdm_list_page(self, response):
@@ -100,6 +100,7 @@ class SmzdmSpider(CrawlSpider):
                 next_page_url = next_page_url_sel.extract()
                 yield WebdriverRequest(next_page_url, meta={'category': category}, callback=self.parse_smzdm_list_page)
         except:
+            traceback.print_exc()
             log.msg("Smzdm list page parse failed:\t[%s]" % (response.url) , level=log.ERROR, spider=SmzdmSpider)
             raise StopIteration
 
@@ -133,27 +134,98 @@ class SmzdmSpider(CrawlSpider):
                 description += self.normalize_text(description_sel.extract())
                 img_src_sel_list = description_sel.select(".//img/@src")
                 for img_src_sel in img_src_sel_list:
-                    img_src_list.append(img_src_sel.extract())
+                    img_src = img_src_sel.extract()
+                    if img_src:
+                        img_src_list.append(img_src)
             try:
                 worthy_vote = int(self.get_text_by_xpath(sel, "//span[@id='rating_worthy_num']/text()"))
             except:
+                traceback.print_exc()
                 worthy_vote = 0
             try:
                 unworthy_vote = int(self.get_text_by_xpath(sel, "//span[@id='rating_unworthy_num']/text()"))
             except:
+                traceback.print_exc()
                 unworthy_vote = 0
             try:
                 favorite_count = int(self.get_text_by_xpath(sel, "//a[@class='fav']/em/text()"))
             except:
+                traceback.print_exc()
                 favorite_count = 0
             try:
                 comment_count = int(self.get_text_by_xpath(sel, "//a[@class='comment']/em/text()"))
             except:
+                traceback.print_exc()
                 comment_count = 0
             yield items.SmzdmItem(title=item_name, price=price, url=response.url, description=description, \
                                   image_urls=img_src_list, worthy_vote=worthy_vote, unworthy_vote=unworthy_vote, \
                                   favorite_count=favorite_count, comment_count=comment_count, category=category, currency=currency)
         except:
+            traceback.print_exc()
+            log.msg("Smzdm item page parse failed:\t[%s]" % (response.url) , level=log.ERROR, spider=SmzdmSpider)
+            raise StopIteration
+
+    def parse_smzdm_post_list_page(self, response):
+        try:
+            category = response.meta["category"]
+            sel = WebdriverXPathSelector(response)
+            item_url_sel_list = sel.select("/html/body/section/div[1]/div[1]/div[@class='list']/div[@class='listTitle']/h4[@class='itemName']/a/@href")
+            for item_url_sel in item_url_sel_list:
+                item_url = item_url_sel.extract()
+                # if item_url not in self.urls_seen:
+                yield WebdriverRequest(item_url, meta={'category': category}, callback=self.parse_smzdm_post_page)
+                # else:
+                #     raise StopIteration
+            next_page_xpath = "//li[@class='pagedown']/a/@href"
+            next_page_url_sel_list = sel.select(next_page_xpath)
+            for next_page_url_sel in next_page_url_sel_list:
+                next_page_url = next_page_url_sel.extract()
+                yield WebdriverRequest(next_page_url, meta={'category': category}, callback=self.parse_smzdm_post_list_page)
+        except:
+            traceback.print_exc()
+            log.msg("Smzdm post list page parse failed:\t[%s]" % (response.url) , level=log.ERROR, spider=SmzdmSpider)
+            raise StopIteration
+
+    def get_real_url(self, response):
+        log.msg("current url:\t[%s]" % (response.webdriver.current_url), level=log.INFO,spider=SmzdmSpider)
+        self.post_item["url"] = response.webdriver.current_url
+
+    def parse_smzdm_post_page(self, response):
+        try:
+            category = response.meta["category"]
+            sel = WebdriverXPathSelector(response)
+            title_sel_list = sel.select('/html/body/section/div/div[1]/article/h1')
+            if len(title_sel_list):
+                title = self.normalize_text(title_sel_list[0].extract())
+            else:
+                log.msg("Smzdm title parse failed:\t[%s]" % (response.url) , level=log.ERROR, spider=SmzdmSpider)
+                raise StopIteration
+            insert_outer_link_list = sel.select('/html/body/section/div/div[@class="leftWrap"]/article/dir[@class="insert-outer"]/a/@href')
+            outer_link_set = set()
+            for insert_outer_link in insert_outer_link_list:
+                outer_link = insert_outer_link.extract()
+                outer_link_set.add(insert_outer_link.extract())
+            description_sel_list = sel.select('/html/body/section/div[1]/div[1]/article/p[@itemprop="description"]')
+            description = ''
+            img_src_list = []
+            for description_sel in description_sel_list:
+                description += self.normalize_text(description_sel.extract())
+                img_src_sel_list = description_sel.select(".//img/@src")
+                for img_src_sel in img_src_sel_list:
+                    img_src = img_src_sel.extract()
+                    if img_src:
+                        img_src_list.append(img_src)
+            real_outer_link_set = set()
+            for outer_link in outer_link_set:
+                response.webdriver.get(outer_link)
+                sel = WebdriverXPathSelector(response)
+                jd_jump_url_sel = sel.select("/html/body/div[5]/div/div/div[1]/div[2]/div[3]/a/@href")
+                if jd_jump_url_sel:
+                    response.webdriver.get(jd_jump_url_sel[0].extract())
+                real_outer_link_set.add(response.webdriver.current_url)
+            yield items.SmzdmPostItem(title=title, url=response.url, outer_link_list=list(real_outer_link_set), image_urls=img_src_list, description=description)
+        except:
+            traceback.print_exc()
             log.msg("Smzdm item page parse failed:\t[%s]" % (response.url) , level=log.ERROR, spider=SmzdmSpider)
             raise StopIteration
 
@@ -192,6 +264,7 @@ class SmzdmSpider(CrawlSpider):
                                 if url.startswith("http://www.kiddies24.de"):
                                     price /= 100
                             except:
+                                traceback.print_exc()
                                 log.msg("Shopping page error:\tThis item is sold out, the price is %s" % (price), level=log.WARNING, spider=SmzdmSpider)
                         else:
                             log.msg("Shopping page error:\tprice is not found", level=log.WARNING, spider=SmzdmSpider)
@@ -252,6 +325,7 @@ class SmzdmSpider(CrawlSpider):
                         log.msg("Shopping item: [%s] [%s] [%s] [%s] [%s]" % (title, description, price, url, referer) , level=log.DEBUG, spider=SmzdmSpider)
                         yield items.ShoppingItem(title=title, price=price, url=url, referer=referer, image_urls=img_src_list, title_image_url=title_img_src, description=description, currency=currency)
         except:
+            traceback.print_exc()
             log.msg("Shopping item page parse failed:\t[%s]" % (response.url) , level=log.ERROR, spider=SmzdmSpider)
             raise StopIteration
 
